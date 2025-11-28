@@ -30,7 +30,7 @@
             gap: 15px;
             padding: 10px;
             width: 100%;
-            max-width: 420px; /* 調整最大寬度 */
+            max-width: 420px;
             align-items: center;
         }
 
@@ -40,15 +40,15 @@
             width: 100%;
             gap: 12px;
             justify-content: space-between;
-            align-items: flex-start; /* 頂部對齊 */
+            align-items: flex-start;
         }
 
         .game-area {
             display: flex;
             flex-direction: column;
             gap: 15px;
-            width: 250px; /* 固定遊戲區寬度 */
-            flex-shrink: 0; /* 防止縮小 */
+            width: 70%; /* 遊戲區佔70% */
+            flex-shrink: 0;
         }
 
         .game-board {
@@ -76,7 +76,7 @@
             gap: 8px;
             padding: 0;
             position: relative;
-            width: 100%;
+            width: 100%; /* 虛擬鍵盤寬度與遊戲區相同 */
         }
 
         .pause-overlay {
@@ -131,7 +131,7 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
-            width: 140px; /* 縮減功能區寬度 */
+            width: 30%; /* 功能區佔30% */
             flex-shrink: 0;
             height: 500px; /* 與遊戲區高度一致 */
         }
@@ -282,11 +282,11 @@
             }
             
             .game-area {
-                width: 250px;
+                width: 65%;
             }
             
             .right-panel {
-                width: 140px;
+                width: 35%;
                 height: 100%;
             }
             
@@ -295,28 +295,26 @@
             }
         }
 
-        /* 手機豎屏模式 - 確保並排顯示 */
+        /* 手機豎屏模式 */
         @media (max-width: 768px) and (orientation: portrait) {
             .game-wrapper {
                 max-width: 100%;
             }
             
             .game-container {
-                flex-direction: row; /* 保持橫向排列 */
+                flex-direction: row;
                 height: auto;
-                justify-content: center; /* 居中對齊 */
-                flex-wrap: nowrap; /* 防止換行 */
+                justify-content: space-between;
+                flex-wrap: nowrap;
             }
             
             .game-area {
-                width: 55%; /* 調整寬度比例 */
-                max-width: 250px;
+                width: 65%;
             }
             
             .right-panel {
-                width: 45%; /* 調整寬度比例 */
-                max-width: 140px;
-                height: 500px; /* 保持與遊戲區相同高度 */
+                width: 35%;
+                height: 500px;
             }
         }
 
@@ -328,14 +326,6 @@
             
             .game-container {
                 gap: 8px;
-            }
-            
-            .game-area {
-                width: 230px;
-            }
-            
-            .right-panel {
-                width: 130px;
             }
             
             .control-btn {
@@ -357,14 +347,6 @@
             
             .game-container {
                 gap: 5px;
-            }
-            
-            .game-area {
-                width: 200px;
-            }
-            
-            .right-panel {
-                width: 110px;
             }
             
             .control-btn {
