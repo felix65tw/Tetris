@@ -5,347 +5,394 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>俄羅斯方塊 - 智能AI版</title>
     <style>
+        /* CSS變量定義，方便統一管理樣式值 */
         :root {
-            --bg-color: #051025;
-            --panel-bg: rgba(0, 30, 70, 0.8);
-            --border-color: #369;
-            --text-color: #fff;
-            --btn-color: #1a9ba0;
-            --btn-active: #0e5a5e;
-            --btn-glow: rgba(77, 201, 207, 0.6);
-            --mobile-scale: 0.6; /* 手机端缩放比例 */
+            --bg-color: #051025; /* 背景顏色 */
+            --panel-bg: rgba(0, 30, 70, 0.8); /* 面板背景顏色 */
+            --border-color: #369; /* 邊框顏色 */
+            --text-color: #fff; /* 文字顏色 */
+            --btn-color: #1a9ba0; /* 按鈕顏色 */
+            --btn-active: #0e5a5e; /* 按鈕激活狀態顏色 */
+            --btn-glow: rgba(77, 201, 207, 0.6); /* 按鈕發光效果 */
         }
 
+        /* 全局樣式設置 */
         body {
             margin: 0;
             padding: 0;
-            background-color: var(--bg-color);
-            background-image: radial-gradient(circle at 50% 50%, #0a1f40 0%, #000 100%);
-            color: var(--text-color);
-            font-family: 'Arial', sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            overflow: hidden;
-            touch-action: none;
+            background-color: var(--bg-color); /* 使用CSS變量設置背景色 */
+            background-image: radial-gradient(circle at 50% 50%, #0a1f40 0%, #000 100%); /* 背景漸變效果 */
+            color: var(--text-color); /* 文字顏色 */
+            font-family: 'Arial', sans-serif; /* 字體設置 */
+            display: flex; /* 使用彈性佈局 */
+            flex-direction: column; /* 垂直排列 */
+            align-items: center; /* 水平居中 */
+            justify-content: center; /* 垂直居中 */
+            height: 100vh; /* 視口高度 */
+            overflow: hidden; /* 隱藏溢出內容 */
+            touch-action: none; /* 禁用瀏覽器默認觸摸行為 */
         }
 
+        /* 遊戲主容器樣式 */
         #game-container {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-            max-height: 80vh;
-            position: relative;
-            transform: scale(var(--mobile-scale));
-            transform-origin: top center;
+            display: flex; /* 使用彈性佈局 */
+            gap: 10px; /* 子元素間距 */
+            margin-bottom: 10px; /* 底部外邊距 */
+            max-height: 80vh; /* 最大高度為視口80% */
+            position: relative; /* 相對定位，用於子元素絕對定位 */
         }
 
+        /* 遊戲畫布樣式 */
         canvas#tetris {
-            border: 4px solid #256ba8;
-            background-color: rgba(0, 0, 0, 0.8);
-            box-shadow: 0 0 15px rgba(37, 107, 168, 0.5);
-            display: block;
-            transition: filter 0.3s ease;
+            border: 4px solid #256ba8; /* 邊框樣式 */
+            background-color: rgba(0, 0, 0, 0.8); /* 背景顏色 */
+            box-shadow: 0 0 15px rgba(37, 107, 168, 0.5); /* 陰影效果 */
+            display: block; /* 塊級元素 */
+            transition: filter 0.3s ease; /* 過渡動畫 */
         }
 
+        /* 暫停狀態下的遊戲畫布樣式 */
         canvas#tetris.paused {
-            filter: blur(5px) brightness(0.7);
+            filter: blur(5px) brightness(0.7); /* 模糊和變暗效果 */
         }
 
+        /* 右側信息欄樣式 */
         #sidebar {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            width: 90px;
+            display: flex; /* 使用彈性佈局 */
+            flex-direction: column; /* 垂直排列 */
+            gap: 10px; /* 子元素間距 */
+            width: 90px; /* 固定寬度 */
         }
 
+        /* 面板盒子樣式 */
         .panel-box {
-            background: var(--panel-bg);
-            border: 2px solid var(--border-color);
-            border-radius: 4px;
-            text-align: center;
-            padding: 5px 2px;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+            background: var(--panel-bg); /* 背景顏色 */
+            border: 2px solid var(--border-color); /* 邊框樣式 */
+            border-radius: 4px; /* 圓角 */
+            text-align: center; /* 文字居中 */
+            padding: 5px 2px; /* 內邊距 */
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5); /* 內陰影 */
         }
 
+        /* 可點擊面板的樣式 */
         .panel-box.clickable {
-            cursor: pointer;
-            transition: all 0.2s;
+            cursor: pointer; /* 鼠標指針樣式 */
+            transition: all 0.2s; /* 過渡動畫 */
         }
 
+        /* 可點擊面板懸停狀態 */
         .panel-box.clickable:hover {
-            background: rgba(0, 40, 90, 0.9);
-            border-color: #4dc9cf;
+            background: rgba(0, 40, 90, 0.9); /* 背景顏色變化 */
+            border-color: #4dc9cf; /* 邊框顏色變化 */
         }
 
+        /* 可點擊面板激活狀態 */
         .panel-box.clickable:active {
-            transform: scale(0.98);
+            transform: scale(0.98); /* 縮小效果 */
         }
 
+        /* 面板標籤樣式 */
         .panel-label {
-            font-size: 10px;
-            color: #8af;
-            font-weight: bold;
-            font-style: italic;
-            margin-bottom: 2px;
-            text-transform: uppercase;
+            font-size: 10px; /* 字體大小 */
+            color: #8af; /* 文字顏色 */
+            font-weight: bold; /* 粗體 */
+            font-style: italic; /* 斜體 */
+            margin-bottom: 2px; /* 底部外邊距 */
+            text-transform: uppercase; /* 大寫字母 */
         }
 
+        /* 面板數值樣式 */
         .panel-value {
-            font-size: 16px;
-            color: #fff;
-            font-family: 'Courier New', Courier, monospace;
+            font-size: 16px; /* 字體大小 */
+            color: #fff; /* 文字顏色 */
+            font-family: 'Courier New', Courier, monospace; /* 等寬字體 */
         }
 
+        /* 下一個方塊預覽畫布樣式 */
         #next-piece-canvas {
-            background-color: #000;
-            margin: 0 auto;
-            display: block;
+            background-color: #000; /* 背景顏色 */
+            margin: 0 auto; /* 水平居中 */
+            display: block; /* 塊級元素 */
         }
 
+        /* 控制按鈕區域樣式 */
         #controls {
-            width: 100%;
-            max-width: 420px;
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 2px;
-            box-sizing: border-box;
-            gap: 3px;
-            transform: scale(var(--mobile-scale));
-            transform-origin: top center;
+            width: 100%; /* 寬度100% */
+            max-width: 420px; /* 最大寬度 */
+            display: flex; /* 使用彈性佈局 */
+            justify-content: space-between; /* 子元素間均勻分佈 */
+            padding: 10px 2px; /* 內邊距 */
+            box-sizing: border-box; /* 盒模型計算方式 */
+            gap: 3px; /* 子元素間距 */
         }
 
+        /* 按鈕基礎樣式 */
         .btn {
-            width: 68px;
-            height: 68px;
-            background: linear-gradient(145deg, var(--btn-color), #0e5a5e);
-            border: none;
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            color: white;
-            cursor: pointer;
-            user-select: none;
-            -webkit-user-select: none;
-            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            flex-shrink: 0;
-            position: relative;
-            overflow: hidden;
+            width: 68px; /* 寬度 */
+            height: 68px; /* 高度 */
+            background: linear-gradient(145deg, var(--btn-color), #0e5a5e); /* 漸變背景 */
+            border: none; /* 無邊框 */
+            border-radius: 16px; /* 圓角 */
+            display: flex; /* 使用彈性佈局 */
+            align-items: center; /* 垂直居中 */
+            justify-content: center; /* 水平居中 */
+            font-size: 28px; /* 字體大小 */
+            color: white; /* 文字顏色 */
+            cursor: pointer; /* 鼠標指針樣式 */
+            user-select: none; /* 禁止文本選擇 */
+            -webkit-user-select: none; /* Safari瀏覽器兼容 */
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); /* 過渡動畫 */
+            flex-shrink: 0; /* 禁止縮小 */
+            position: relative; /* 相對定位 */
+            overflow: hidden; /* 隱藏溢出內容 */
             box-shadow: 
-                0 4px 8px rgba(0, 0, 0, 0.3),
+                0 4px 8px rgba(0, 0, 0, 0.3), /* 多層陰影效果 */
                 0 0 0 1px rgba(255, 255, 255, 0.1),
                 inset 0 1px 0 rgba(255, 255, 255, 0.2);
         }
 
+        /* 按鈕發光效果 */
         .btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: radial-gradient(circle at center, var(--btn-glow) 0%, transparent 70%);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            border-radius: 16px;
+            content: ''; /* 偽元素內容 */
+            position: absolute; /* 絕對定位 */
+            top: 0; /* 頂部對齊 */
+            left: 0; /* 左側對齊 */
+            right: 0; /* 右側對齊 */
+            bottom: 0; /* 底部對齊 */
+            background: radial-gradient(circle at center, var(--btn-glow) 0%, transparent 70%); /* 徑向漸變 */
+            opacity: 0; /* 初始透明 */
+            transition: opacity 0.3s ease; /* 過渡動畫 */
+            border-radius: 16px; /* 圓角 */
         }
 
+        /* 按鈕懸停狀態發光效果 */
         .btn:hover::before {
-            opacity: 0.6;
+            opacity: 0.6; /* 顯示發光效果 */
         }
 
+        /* 按鈕激活狀態樣式 */
         .btn:active, .btn.active {
-            transform: scale(0.92) translateY(2px);
+            transform: scale(0.92) translateY(2px); /* 縮小和向下移動 */
             box-shadow: 
-                0 2px 4px rgba(0, 0, 0, 0.4),
+                0 2px 4px rgba(0, 0, 0, 0.4), /* 陰影變化 */
                 0 0 0 1px rgba(255, 255, 255, 0.2),
                 inset 0 2px 4px rgba(0, 0, 0, 0.3);
-            background: linear-gradient(145deg, var(--btn-active), #0a4a4e);
+            background: linear-gradient(145deg, var(--btn-active), #0a4a4e); /* 漸變背景變化 */
         }
 
+        /* 按鈕圖標樣式 */
         .btn-icon {
-            filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3));
-            transition: transform 0.2s ease;
+            filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3)); /* 陰影效果 */
+            transition: transform 0.2s ease; /* 過渡動畫 */
         }
 
+        /* 按鈕激活狀態圖標樣式 */
         .btn:active .btn-icon {
-            transform: scale(0.9);
+            transform: scale(0.9); /* 縮小效果 */
         }
 
+        /* 開始遊戲覆蓋層樣式 */
         #overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.85);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 20;
-            transform: scale(var(--mobile-scale));
-            transform-origin: center center;
+            position: absolute; /* 絕對定位 */
+            top: 0; /* 頂部對齊 */
+            left: 0; /* 左側對齊 */
+            width: 100%; /* 寬度100% */
+            height: 100%; /* 高度100% */
+            background: rgba(0,0,0,0.85); /* 半透明背景 */
+            display: flex; /* 使用彈性佈局 */
+            flex-direction: column; /* 垂直排列 */
+            align-items: center; /* 水平居中 */
+            justify-content: center; /* 垂直居中 */
+            z-index: 20; /* 層級 */
         }
 
+        /* 開始標題樣式 */
         #start-title {
-            font-size: 40px;
-            color: #4dc9cf;
-            text-shadow: 0 0 10px #1a9ba0;
-            margin-bottom: 20px;
+            font-size: 40px; /* 字體大小 */
+            color: #4dc9cf; /* 文字顏色 */
+            text-shadow: 0 0 10px #1a9ba0; /* 文字陰影 */
+            margin-bottom: 20px; /* 底部外邊距 */
         }
 
+        /* 等級選擇區域樣式 */
         #level-selection {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            width: 80%;
-            max-width: 300px;
+            display: flex; /* 使用彈性佈局 */
+            flex-direction: column; /* 垂直排列 */
+            gap: 10px; /* 子元素間距 */
+            width: 80%; /* 寬度80% */
+            max-width: 300px; /* 最大寬度 */
         }
 
+        /* 等級按鈕樣式 */
         .level-btn {
-            padding: 12px 20px;
-            background: rgba(26, 155, 160, 0.3);
-            border: 2px solid #1a9ba0;
-            border-radius: 8px;
-            color: white;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-align: left;
+            padding: 12px 20px; /* 內邊距 */
+            background: rgba(26, 155, 160, 0.3); /* 背景顏色 */
+            border: 2px solid #1a9ba0; /* 邊框樣式 */
+            border-radius: 8px; /* 圓角 */
+            color: white; /* 文字顏色 */
+            font-size: 16px; /* 字體大小 */
+            cursor: pointer; /* 鼠標指針樣式 */
+            transition: all 0.3s; /* 過渡動畫 */
+            text-align: left; /* 文字左對齊 */
         }
 
+        /* 等級按鈕懸停狀態 */
         .level-btn:hover {
-            background: rgba(26, 155, 160, 0.6);
-            transform: translateY(-2px);
+            background: rgba(26, 155, 160, 0.6); /* 背景顏色變化 */
+            transform: translateY(-2px); /* 向上移動 */
         }
 
+        /* 等級按鈕激活狀態 */
         .level-btn.active {
-            background: #1a9ba0;
-            border-color: #4dc9cf;
-            box-shadow: 0 0 10px rgba(77, 201, 207, 0.5);
+            background: #1a9ba0; /* 背景顏色 */
+            border-color: #4dc9cf; /* 邊框顏色 */
+            box-shadow: 0 0 10px rgba(77, 201, 207, 0.5); /* 陰影效果 */
         }
 
+        /* 等級描述文字樣式 */
         .level-desc {
-            font-size: 12px;
-            color: #8af;
-            margin-top: 5px;
-            opacity: 0.8;
+            font-size: 12px; /* 字體大小 */
+            color: #8af; /* 文字顏色 */
+            margin-top: 5px; /* 頂部外邊距 */
+            opacity: 0.8; /* 透明度 */
         }
 
         /* 遊戲結束覆蓋層樣式 */
         #game-over-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 30;
-            transform: scale(var(--mobile-scale));
-            transform-origin: center center;
+            position: absolute; /* 絕對定位 */
+            top: 0; /* 頂部對齊 */
+            left: 0; /* 左側對齊 */
+            width: 100%; /* 寬度100% */
+            height: 100%; /* 高度100% */
+            background: rgba(0,0,0,0.8); /* 半透明背景 */
+            display: none; /* 初始隱藏 */
+            flex-direction: column; /* 垂直排列 */
+            align-items: center; /* 水平居中 */
+            justify-content: center; /* 垂直居中 */
+            z-index: 30; /* 層級 */
         }
 
+        /* 遊戲結束標題樣式 */
         #game-over-title {
-            font-size: 48px;
-            color: #ff4757;
-            text-shadow: 0 0 10px #ff4757;
-            margin-bottom: 20px;
+            font-size: 48px; /* 字體大小 */
+            color: #ff4757; /* 文字顏色 */
+            text-shadow: 0 0 10px #ff4757; /* 文字陰影 */
+            margin-bottom: 20px; /* 底部外邊距 */
         }
 
+        /* 最終統計數據區域樣式 */
         #final-stats {
-            background: rgba(0, 30, 70, 0.9);
-            border: 2px solid #369;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-            text-align: center;
+            background: rgba(0, 30, 70, 0.9); /* 背景顏色 */
+            border: 2px solid #369; /* 邊框樣式 */
+            border-radius: 8px; /* 圓角 */
+            padding: 20px; /* 內邊距 */
+            margin-bottom: 20px; /* 底部外邊距 */
+            text-align: center; /* 文字居中 */
         }
 
+        /* 統計項目樣式 */
         .stat-item {
-            margin: 10px 0;
-            font-size: 18px;
+            margin: 10px 0; /* 上下外邊距 */
+            font-size: 18px; /* 字體大小 */
         }
 
+        /* 統計數值樣式 */
         .stat-value {
-            color: #4dc9cf;
-            font-weight: bold;
+            color: #4dc9cf; /* 文字顏色 */
+            font-weight: bold; /* 粗體 */
         }
 
+        /* 重新開始按鈕樣式 */
         #restart-btn {
-            padding: 12px 30px;
-            background: #1a9ba0;
-            border: none;
-            border-radius: 8px;
-            color: white;
-            font-size: 18px;
-            cursor: pointer;
-            transition: all 0.3s;
+            padding: 12px 30px; /* 內邊距 */
+            background: #1a9ba0; /* 背景顏色 */
+            border: none; /* 無邊框 */
+            border-radius: 8px; /* 圓角 */
+            color: white; /* 文字顏色 */
+            font-size: 18px; /* 字體大小 */
+            cursor: pointer; /* 鼠標指針樣式 */
+            transition: all 0.3s; /* 過渡動畫 */
         }
 
+        /* 重新開始按鈕懸停狀態 */
         #restart-btn:hover {
-            background: #4dc9cf;
-            transform: translateY(-2px);
+            background: #4dc9cf; /* 背景顏色變化 */
+            transform: translateY(-2px); /* 向上移動 */
         }
 
+        /* 返回主菜單按鈕樣式 */
         #back-to-menu-btn {
-            padding: 12px 30px;
-            background: #4a5568;
-            border: none;
-            border-radius: 8px;
-            color: white;
-            font-size: 18px;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-top: 10px;
+            padding: 12px 30px; /* 內邊距 */
+            background: #4a5568; /* 背景顏色 */
+            border: none; /* 無邊框 */
+            border-radius: 8px; /* 圓角 */
+            color: white; /* 文字顏色 */
+            font-size: 18px; /* 字體大小 */
+            cursor: pointer; /* 鼠標指針樣式 */
+            transition: all 0.3s; /* 過渡動畫 */
+            margin-top: 10px; /* 頂部外邊距 */
         }
 
+        /* 返回主菜單按鈕懸停狀態 */
         #back-to-menu-btn:hover {
-            background: #718096;
-            transform: translateY(-2px);
+            background: #718096; /* 背景顏色變化 */
+            transform: translateY(-2px); /* 向上移動 */
         }
 
+        /* 脈衝動畫效果 */
         @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
+            0% { transform: scale(1); } /* 初始大小 */
+            50% { transform: scale(1.05); } /* 放大 */
+            100% { transform: scale(1); } /* 恢復原大小 */
         }
 
-        /* AI狀態指示器 */
+        /* AI狀態指示器樣式 */
         #ai-indicator {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(0, 30, 70, 0.8);
-            border: 2px solid #369;
-            border-radius: 4px;
-            padding: 5px 10px;
-            font-size: 12px;
-            color: #8af;
-            display: none;
-            z-index: 40;
-            transform: scale(var(--mobile-scale));
-            transform-origin: top left;
+            position: absolute; /* 絕對定位 */
+            top: 10px; /* 距離頂部 */
+            left: 10px; /* 距離左側 */
+            background: rgba(0, 30, 70, 0.8); /* 背景顏色 */
+            border: 2px solid #369; /* 邊框樣式 */
+            border-radius: 4px; /* 圓角 */
+            padding: 5px 10px; /* 內邊距 */
+            font-size: 12px; /* 字體大小 */
+            color: #8af; /* 文字顏色 */
+            display: none; /* 初始隱藏 */
+            z-index: 40; /* 層級 */
         }
 
+        /* AI狀態指示器激活狀態 */
         #ai-indicator.active {
-            display: block;
-            color: #4dc9cf;
-            border-color: #4dc9cf;
+            display: block; /* 顯示 */
+            color: #4dc9cf; /* 文字顏色 */
+            border-color: #4dc9cf; /* 邊框顏色 */
         }
 
-        /* 桌面端样式 - 不使用缩放 */
+        /* 移動端適配樣式 */
+        @media (max-width: 767px) {
+            /* 移動端縮放比例 */
+            #game-container, #controls, #overlay, #game-over-overlay, #ai-indicator {
+                transform: scale(0.85);
+                transform-origin: top center;
+            }
+            
+            /* 移動端按鈕尺寸調整 */
+            .btn {
+                width: 60px;
+                height: 60px;
+                font-size: 24px;
+            }
+            
+            /* 移動端側邊欄寬度調整 */
+            #sidebar {
+                width: 80px;
+            }
+        }
+
+        /* 桌面端樣式 - 不使用縮放 */
         @media (min-width: 768px) {
             #game-container, #controls, #overlay, #game-over-overlay, #ai-indicator {
-                transform: scale(1) !important;
+                transform: scale(1) !important; /* 確保桌面端不縮放 */
             }
         }
     </style>
@@ -470,6 +517,10 @@
     </div>
 
     <script>
+        // =================================================================
+        // 遊戲初始化與變量定義
+        // =================================================================
+
         // 獲取主要遊戲畫布和其 2D 繪圖上下文
         const canvas = document.getElementById('tetris');
         const context = canvas.getContext('2d');
@@ -478,50 +529,58 @@
         const nextCanvas = document.getElementById('next-piece-canvas');
         const nextContext = nextCanvas.getContext('2d');
         
-        // AI狀態指示器
+        // AI狀態指示器元素
         const aiIndicator = document.getElementById('ai-indicator');
         
         // 響應式調整 Canvas 大小
         function resizeCanvas() {
+            // 計算最大高度為視口高度的65%
             let maxHeight = window.innerHeight * 0.65;
+            // 根據最大高度計算每個方塊的大小
             let scale = maxHeight / 20;
+            // 取整數作為方塊大小
             const blockSize = Math.floor(scale);
             
+            // 設置主遊戲畫布大小（考慮1.4倍的縮放因子）
             context.canvas.width = blockSize * 10 * 1.4;
             context.canvas.height = blockSize * 20 * 1.4;
+            // 應用縮放變換
             context.scale(blockSize * 1.4, blockSize * 1.4);
 
+            // 設置預覽畫布縮放
             nextContext.scale(15, 15);
+            
+            // 返回方塊大小
             return blockSize;
         }
 
         // 遊戲變數定義
-        let blockSize = 20;
-        const COLS = 10;
-        const ROWS = 20;
-        let score = 0;
-        let highScore = localStorage.getItem('tetris_highscore') || 0;
-        let level = 1;
-        let dropCounter = 0;
-        let dropInterval = 1000;
-        let lastTime = 0;
-        let isPaused = true;
-        let isGameOver = false;
-        let gameMode = 'beginner';
-        let isSoftDropping = false;
-        let softDropInterval = 50;
-        let isAutoPlay = false;
-        let autoPlayTimer = null;
-        let lastAutoPlayTime = 0;
-        let totalLinesCleared = 0;
+        let blockSize = 20; // 方塊大小（像素）
+        const COLS = 10; // 遊戲區域列數
+        const ROWS = 20; // 遊戲區域行數
+        let score = 0; // 當前分數
+        let highScore = localStorage.getItem('tetris_highscore') || 0; // 從本地存儲獲取最高分，默認為0
+        let level = 1; // 當前等級
+        let dropCounter = 0; // 下落計數器，用於控制下落時間
+        let dropInterval = 1000; // 下落間隔（毫秒）
+        let lastTime = 0; // 上一幀的時間戳
+        let isPaused = true; // 遊戲是否暫停
+        let isGameOver = false; // 遊戲是否結束
+        let gameMode = 'beginner'; // 當前遊戲模式
+        let isSoftDropping = false; // 是否正在軟降（加速下落）
+        let softDropInterval = 50; // 軟降間隔（毫秒）
+        let isAutoPlay = false; // 是否啟用AI自動遊戲
+        let autoPlayTimer = null; // AI自動遊戲計時器
+        let lastAutoPlayTime = 0; // 上次AI自動遊戲時間
+        let totalLinesCleared = 0; // 總消除行數
 
         // 遊戲模式設定 - 五個等級
         const gameModes = {
             'beginner': {
-                name: '入門',
-                baseSpeed: 1000,
-                softDropSpeed: 50,
-                description: '輕鬆體驗'
+                name: '入門', // 模式名稱
+                baseSpeed: 1000, // 基礎下落速度
+                softDropSpeed: 50, // 軟降速度
+                description: '輕鬆體驗' // 模式描述
             },
             'easy': {
                 name: '簡易',
@@ -550,29 +609,35 @@
         };
 
         // 初始化顯示
-        document.getElementById('highscore').innerText = highScore;
-        document.getElementById('lines').innerText = totalLinesCleared;
-        updateSpeedDisplay();
+        document.getElementById('highscore').innerText = highScore; // 顯示最高分
+        document.getElementById('lines').innerText = totalLinesCleared; // 顯示消除行數
+        updateSpeedDisplay(); // 更新速度顯示
 
         // 方塊類型和對應顏色定義
-        const pieces = 'ILJOTSZ';
+        const pieces = 'ILJOTSZ'; // 方塊類型字符串
         const colors = [
-            null,
-            '#FF0D72', '#0DC2FF', '#0DFF72', '#F538FF', '#FF8E0D', '#FFE138', '#3877FF',
+            null, // 索引0不使用
+            '#FF0D72', // I型方塊顏色
+            '#0DC2FF', // L型方塊顏色
+            '#0DFF72', // J型方塊顏色
+            '#F538FF', // O型方塊顏色
+            '#FF8E0D', // Z型方塊顏色
+            '#FFE138', // S型方塊顏色
+            '#3877FF', // T型方塊顏色
         ];
 
         // =================================================================
-        // 基於El-Tetris算法的AI改進 - 參考自YuhanXiaoJY的GitHub實現
+        // 基於El-Tetris算法的AI實現
         // =================================================================
 
         // El-Tetris算法的特徵權重
         const EL_TETRIS_WEIGHTS = {
-            landingHeight: -4.500158825082766,
-            rowsEliminated: 3.4181268101392694,
-            rowTransitions: -3.2178882868487753,
-            colTransitions: -9.348695305445199,
-            holes: -7.899265427351652,
-            wellSums: -3.3855972247263626
+            landingHeight: -4.500158825082766, // 著陸高度權重（越低越好）
+            rowsEliminated: 3.4181268101392694, // 消除行數權重（越高越好）
+            rowTransitions: -3.2178882868487753, // 行變換權重（越少越好）
+            colTransitions: -9.348695305445199, // 列變換權重（越少越好）
+            holes: -7.899265427351652, // 空洞數權重（越少越好）
+            wellSums: -3.3855972247263626 // 井深總和權重（越少越好）
         };
 
         /**
@@ -580,10 +645,10 @@
          * @returns {Object} 最佳移動的旋轉和位置信息
          */
         function findBestMove() {
-            let bestScore = -Infinity;
-            let bestMove = null;
-            const originalMatrix = JSON.parse(JSON.stringify(player.matrix));
-            const originalPos = { ...player.pos };
+            let bestScore = -Infinity; // 初始化最佳分數為負無窮
+            let bestMove = null; // 初始化最佳移動為空
+            const originalMatrix = JSON.parse(JSON.stringify(player.matrix)); // 保存原始方塊矩陣
+            const originalPos = { ...player.pos }; // 保存原始位置
             
             // 測試所有可能的旋轉狀態 (0-3)
             for (let rotation = 0; rotation < 4; rotation++) {
@@ -593,7 +658,7 @@
                 
                 // 應用旋轉
                 for (let r = 0; r < rotation; r++) {
-                    rotate(player.matrix, 1);
+                    rotate(player.matrix, 1); // 順時針旋轉
                     // 如果旋轉後發生碰撞，跳過這個旋轉
                     if (collide(arena, player)) {
                         player.matrix = JSON.parse(JSON.stringify(originalMatrix));
@@ -601,18 +666,19 @@
                     }
                 }
                 
-                const pieceWidth = player.matrix[0].length;
+                const pieceWidth = player.matrix[0].length; // 獲取方塊寬度
                 
                 // 測試所有可能的水準位置
                 for (let x = 0; x <= COLS - pieceWidth; x++) {
-                    player.pos.x = x;
+                    player.pos.x = x; // 設置測試位置
                     player.pos.y = 0;
                     
+                    // 如果位置有效（不碰撞）
                     if (!collide(arena, player)) {
-                        const score = evaluatePositionElTetris(x, rotation);
+                        const score = evaluatePositionElTetris(x, rotation); // 評估位置分數
                         if (score > bestScore) {
-                            bestScore = score;
-                            bestMove = { x: x, rotation: rotation };
+                            bestScore = score; // 更新最佳分數
+                            bestMove = { x: x, rotation: rotation }; // 更新最佳移動
                         }
                     }
                 }
@@ -622,7 +688,7 @@
             player.matrix = originalMatrix;
             player.pos = originalPos;
             
-            return bestMove;
+            return bestMove; // 返回最佳移動
         }
 
         /**
@@ -632,22 +698,22 @@
          * @returns {number} 位置評分
          */
         function evaluatePositionElTetris(x, rotation) {
-            const testArena = JSON.parse(JSON.stringify(arena));
+            const testArena = JSON.parse(JSON.stringify(arena)); // 創建測試場地副本
             const testPlayer = {
-                matrix: JSON.parse(JSON.stringify(player.matrix)),
-                pos: { x: x, y: 0 }
+                matrix: JSON.parse(JSON.stringify(player.matrix)), // 創建測試方塊副本
+                pos: { x: x, y: 0 } // 設置測試位置
             };
             
             // 應用旋轉
             for (let r = 0; r < rotation; r++) {
-                rotate(testPlayer.matrix, 1);
+                rotate(testPlayer.matrix, 1); // 旋轉方塊
             }
             
             // 模擬下落到底部
             while (!collide(testArena, testPlayer)) {
-                testPlayer.pos.y++;
+                testPlayer.pos.y++; // 向下移動
             }
-            testPlayer.pos.y--;
+            testPlayer.pos.y--; // 回退一步（因為最後一步會碰撞）
             
             // 合併到測試場地
             const mergedArena = JSON.parse(JSON.stringify(testArena));
@@ -665,7 +731,7 @@
             score += features.holes * EL_TETRIS_WEIGHTS.holes;
             score += features.wellSums * EL_TETRIS_WEIGHTS.wellSums;
             
-            return score;
+            return score; // 返回計算出的分數
         }
 
         /**
@@ -693,6 +759,7 @@
             // 6. 井深總和: 連續的井深累加和
             const wellSums = calculateWellSumsElTetris(mergedArena);
             
+            // 返回所有特徵值
             return {
                 landingHeight,
                 rowsEliminated,
@@ -705,74 +772,82 @@
 
         /**
          * 計算行變換 - El-Tetris版本
+         * @param {Array} mergedArena - 合併後的場地
+         * @returns {number} 行變換總數
          */
         function calculateRowTransitionsElTetris(mergedArena) {
-            let transitions = 0;
+            let transitions = 0; // 初始化變換計數
             for (let y = 0; y < ROWS; y++) {
                 // 從左邊界開始（假設邊界是填充的）
                 let previousFilled = 1;
                 for (let x = 0; x < COLS; x++) {
-                    const filled = mergedArena[y][x] !== 0 ? 1 : 0;
+                    const filled = mergedArena[y][x] !== 0 ? 1 : 0; // 判斷單元格是否填充
                     if (filled !== previousFilled) {
-                        transitions++;
+                        transitions++; // 如果狀態變化，增加計數
                     }
-                    previousFilled = filled;
+                    previousFilled = filled; // 更新前一個狀態
                 }
                 // 檢查右邊界
                 if (previousFilled !== 1) {
-                    transitions++;
+                    transitions++; // 右邊界變化計數
                 }
             }
-            return transitions;
+            return transitions; // 返回總變換數
         }
 
         /**
          * 計算列變換 - El-Tetris版本
+         * @param {Array} mergedArena - 合併後的場地
+         * @returns {number} 列變換總數
          */
         function calculateColTransitionsElTetris(mergedArena) {
-            let transitions = 0;
+            let transitions = 0; // 初始化變換計數
             for (let x = 0; x < COLS; x++) {
                 // 從頂部開始（假設邊界是填充的）
                 let previousFilled = 1;
                 for (let y = 0; y < ROWS; y++) {
-                    const filled = mergedArena[y][x] !== 0 ? 1 : 0;
+                    const filled = mergedArena[y][x] !== 0 ? 1 : 0; // 判斷單元格是否填充
                     if (filled !== previousFilled) {
-                        transitions++;
+                        transitions++; // 如果狀態變化，增加計數
                     }
-                    previousFilled = filled;
+                    previousFilled = filled; // 更新前一個狀態
                 }
                 // 檢查底部邊界
                 if (previousFilled !== 1) {
-                    transitions++;
+                    transitions++; // 底部邊界變化計數
                 }
             }
-            return transitions;
+            return transitions; // 返回總變換數
         }
 
         /**
          * 計算空洞數 - El-Tetris版本
+         * @param {Array} mergedArena - 合併後的場地
+         * @returns {number} 空洞總數
          */
         function calculateHolesElTetris(mergedArena) {
-            let holes = 0;
+            let holes = 0; // 初始化空洞計數
             for (let x = 0; x < COLS; x++) {
-                let foundBlock = false;
+                let foundBlock = false; // 標記是否在該列找到方塊
                 for (let y = 0; y < ROWS; y++) {
                     if (mergedArena[y][x] !== 0) {
-                        foundBlock = true;
+                        foundBlock = true; // 找到方塊
                     } else if (foundBlock) {
                         // 發現空洞（在該列中至少有一個方塊上方存在空格）
-                        holes++;
+                        holes++; // 增加空洞計數
                     }
                 }
             }
-            return holes;
+            return holes; // 返回空洞總數
         }
 
         /**
          * 計算井深總和 - El-Tetris版本
+         * @param {Array} mergedArena - 合併後的場地
+         * @returns {number} 井深總和
          */
         function calculateWellSumsElTetris(mergedArena) {
-            let wellSums = 0;
+            let wellSums = 0; // 初始化井深總和
             
             // 檢查每一列
             for (let x = 0; x < COLS; x++) {
@@ -796,10 +871,10 @@
                                 const currentRightBlocked = (x === COLS-1) || (mergedArena[currentY][x+1] !== 0);
                                 
                                 if (currentLeftBlocked && currentRightBlocked) {
-                                    depth++;
-                                    currentY++;
+                                    depth++; // 增加井深
+                                    currentY++; // 檢查下一行
                                 } else {
-                                    break;
+                                    break; // 不再形成井，退出循環
                                 }
                             }
                             
@@ -813,31 +888,34 @@
                 }
             }
             
-            return wellSums;
+            return wellSums; // 返回井深總和
         }
 
         /**
          * AI移動邏輯 - 使用El-Tetris算法
          */
         function autoPlayMove() {
+            // 如果沒有方塊、遊戲暫停或未啟用AI，則返回
             if (!player.matrix || isPaused || !isAutoPlay) return;
             
+            // 尋找最佳移動
             const bestMove = findBestMove();
             
+            // 如果找到最佳移動
             if (bestMove) {
                 // 執行旋轉
                 const rotationsNeeded = bestMove.rotation;
                 for (let i = 0; i < rotationsNeeded; i++) {
-                    playerRotate(1);
+                    playerRotate(1); // 旋轉方塊
                 }
                 
                 // 執行水平移動
                 const moveDirection = bestMove.x - player.pos.x;
                 if (moveDirection !== 0) {
-                    const steps = Math.abs(moveDirection);
-                    const direction = Math.sign(moveDirection);
+                    const steps = Math.abs(moveDirection); // 移動步數
+                    const direction = Math.sign(moveDirection); // 移動方向
                     for (let i = 0; i < steps; i++) {
-                        playerMove(direction);
+                        playerMove(direction); // 移動方塊
                     }
                 }
                 
@@ -847,169 +925,213 @@
         }
 
         // =================================================================
-        // 遊戲核心邏輯（保持不變）
+        // 遊戲核心邏輯
         // =================================================================
 
-        // 選擇遊戲等級並開始遊戲
+        /**
+         * 選擇遊戲等級並開始遊戲
+         * @param {string} mode - 遊戲模式
+         */
         function selectLevel(mode) {
-            gameMode = mode;
-            const modeConfig = gameModes[mode];
+            gameMode = mode; // 設置遊戲模式
+            const modeConfig = gameModes[mode]; // 獲取模式配置
             
+            // 更新等級選擇按鈕的激活狀態
             document.querySelectorAll('.level-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
             event.currentTarget.classList.add('active');
             
+            // 設置下落速度和軟降速度
             dropInterval = modeConfig.baseSpeed;
             softDropInterval = modeConfig.softDropSpeed;
             
+            // 更新模式顯示
             document.getElementById('mode').innerText = modeConfig.name;
-            updateSpeedDisplay();
+            updateSpeedDisplay(); // 更新速度顯示
             
             // 選擇難度後直接開始遊戲
             startGame();
         }
 
-        // 更新速度顯示
+        /**
+         * 更新速度顯示
+         */
         function updateSpeedDisplay() {
             document.getElementById('speed').innerText = dropInterval + 'ms';
         }
 
-        // 切換暫停狀態
+        /**
+         * 切換暫停狀態
+         */
         function togglePause() {
-            if (isGameOver) return;
+            if (isGameOver) return; // 遊戲結束時不能暫停
             
-            isPaused = !isPaused;
+            isPaused = !isPaused; // 切換暫停狀態
             const canvas = document.getElementById('tetris');
             const pauseStatus = document.getElementById('pause-status');
             
             if (isPaused) {
-                canvas.classList.add('paused');
-                pauseStatus.innerHTML = '▶';
-                stopAutoPlay();
+                canvas.classList.add('paused'); // 添加暫停樣式
+                pauseStatus.innerHTML = '▶'; // 更新暫停狀態顯示
+                stopAutoPlay(); // 停止AI自動遊戲
             } else {
-                canvas.classList.remove('paused');
-                pauseStatus.innerHTML = '❚❚';
-                lastTime = performance.now();
-                update();
+                canvas.classList.remove('paused'); // 移除暫停樣式
+                pauseStatus.innerHTML = '❚❚'; // 更新暫停狀態顯示
+                lastTime = performance.now(); // 重置時間戳
+                update(); // 繼續遊戲更新
                 if (isAutoPlay) {
-                    startAutoPlay();
+                    startAutoPlay(); // 如果啟用AI，重新開始AI自動遊戲
                 }
             }
         }
 
-        // 切換電腦託管模式
+        /**
+         * 切換電腦託管模式
+         */
         function toggleAutoPlay() {
-            if (isPaused || isGameOver) return;
+            if (isPaused || isGameOver) return; // 暫停或遊戲結束時不能切換
             
-            isAutoPlay = !isAutoPlay;
+            isAutoPlay = !isAutoPlay; // 切換AI自動遊戲狀態
             
             if (isAutoPlay) {
-                aiIndicator.classList.add('active');
-                startAutoPlay();
+                aiIndicator.classList.add('active'); // 顯示AI指示器
+                startAutoPlay(); // 開始AI自動遊戲
             } else {
-                aiIndicator.classList.remove('active');
-                stopAutoPlay();
+                aiIndicator.classList.remove('active'); // 隱藏AI指示器
+                stopAutoPlay(); // 停止AI自動遊戲
             }
         }
 
-        // 開始電腦託管
+        /**
+         * 開始電腦託管
+         */
         function startAutoPlay() {
-            if (!isAutoPlay || isPaused) return;
+            if (!isAutoPlay || isPaused) return; // 如果未啟用AI或遊戲暫停，則返回
             
-            stopAutoPlay();
-            lastAutoPlayTime = performance.now();
+            stopAutoPlay(); // 先停止現有的AI計時器
+            lastAutoPlayTime = performance.now(); // 記錄當前時間
             
+            // 設置AI自動遊戲計時器
             autoPlayTimer = setInterval(() => {
+                // 如果遊戲未暫停且有方塊且啟用AI
                 if (!isPaused && player.matrix && isAutoPlay) {
                     const currentTime = performance.now();
+                    // 檢查是否達到AI移動間隔
                     if (currentTime - lastAutoPlayTime > Math.max(100, dropInterval)) {
-                        autoPlayMove();
-                        lastAutoPlayTime = currentTime;
+                        autoPlayMove(); // 執行AI移動
+                        lastAutoPlayTime = currentTime; // 更新最後移動時間
                     }
                 }
-            }, 50);
+            }, 50); // 每50毫秒檢查一次
         }
 
-        // 停止電腦託管
+        /**
+         * 停止電腦託管
+         */
         function stopAutoPlay() {
             if (autoPlayTimer) {
-                clearInterval(autoPlayTimer);
-                autoPlayTimer = null;
+                clearInterval(autoPlayTimer); // 清除計時器
+                autoPlayTimer = null; // 重置計時器變量
             }
         }
 
-        // 創建遊戲矩陣
+        /**
+         * 創建遊戲矩陣
+         * @param {number} w - 矩陣寬度
+         * @param {number} h - 矩陣高度
+         * @returns {Array} 初始化的二維矩陣
+         */
         function createMatrix(w, h) {
             const matrix = [];
             for (let i = 0; i < h; i++) {
-                matrix.push(new Array(w).fill(0));
+                matrix.push(new Array(w).fill(0)); // 創建一行並填充0
             }
             return matrix;
         }
 
         // 方塊形狀定義
         const pieceShapes = {
-            'I': [[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]],
-            'L': [[0,2,0],[0,2,0],[0,2,2]],
-            'J': [[0,3,0],[0,3,0],[3,3,0]],
-            'O': [[4,4],[4,4]],
-            'Z': [[5,5,0],[0,5,5],[0,0,0]],
-            'S': [[0,6,6],[6,6,0],[0,0,0]],
-            'T': [[0,7,0],[7,7,7],[0,0,0]]
+            'I': [[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]], // I型方塊
+            'L': [[0,2,0],[0,2,0],[0,2,2]], // L型方塊
+            'J': [[0,3,0],[0,3,0],[3,3,0]], // J型方塊
+            'O': [[4,4],[4,4]], // O型方塊
+            'Z': [[5,5,0],[0,5,5],[0,0,0]], // Z型方塊
+            'S': [[0,6,6],[6,6,0],[0,0,0]], // S型方塊
+            'T': [[0,7,0],[7,7,7],[0,0,0]] // T型方塊
         };
 
+        /**
+         * 創建指定類型的方塊
+         * @param {string} type - 方塊類型
+         * @returns {Array} 方塊矩陣
+         */
         function createPiece(type) {
-            return pieceShapes[type] || pieceShapes['T'];
+            return pieceShapes[type] || pieceShapes['T']; // 返回對應類型的方塊，默認為T型
         }
 
         // 初始化遊戲區域和玩家狀態
-        const arena = createMatrix(COLS, ROWS);
+        const arena = createMatrix(COLS, ROWS); // 創建遊戲區域矩陣
         const player = { 
-            pos: {x: 0, y: 0},
-            matrix: null,
-            score: 0,
-            next: null
+            pos: {x: 0, y: 0}, // 玩家方塊位置
+            matrix: null, // 玩家方塊矩陣
+            score: 0, // 玩家分數
+            next: null // 下一個方塊
         };
 
-        // 繪製矩陣
+        /**
+         * 繪製矩陣
+         * @param {Array} matrix - 要繪製的矩陣
+         * @param {Object} offset - 偏移量 {x, y}
+         * @param {CanvasRenderingContext2D} ctx - 繪圖上下文
+         * @param {boolean} isGhost - 是否為陰影（透明）方塊
+         */
         function drawMatrix(matrix, offset, ctx = context, isGhost = false) {
             for (let y = 0; y < matrix.length; y++) {
                 for (let x = 0; x < matrix[y].length; x++) {
-                    const value = matrix[y][x];
-                    if (value !== 0) {
+                    const value = matrix[y][x]; // 獲取單元格值
+                    if (value !== 0) { // 如果單元格有值（不是空）
                         if (isGhost) {
-                            ctx.globalAlpha = 0.2;
-                            ctx.fillStyle = '#ffffff';
-                            ctx.fillRect(x + offset.x, y + offset.y, 1, 1);
-                            ctx.globalAlpha = 1.0;
+                            // 繪製陰影方塊
+                            ctx.globalAlpha = 0.2; // 設置透明度
+                            ctx.fillStyle = '#ffffff'; // 設置顏色為白色
+                            ctx.fillRect(x + offset.x, y + offset.y, 1, 1); // 繪製矩形
+                            ctx.globalAlpha = 1.0; // 恢復透明度
                         } else {
-                            ctx.fillStyle = colors[value];
-                            ctx.fillRect(x + offset.x, y + offset.y, 1, 1);
-                            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-                            ctx.lineWidth = 0.05;
-                            ctx.strokeRect(x + offset.x, y + offset.y, 1, 1);
+                            // 繪製正常方塊
+                            ctx.fillStyle = colors[value]; // 根據值設置顏色
+                            ctx.fillRect(x + offset.x, y + offset.y, 1, 1); // 繪製矩形
+                            ctx.strokeStyle = 'rgba(255,255,255,0.5)'; // 設置邊框顏色
+                            ctx.lineWidth = 0.05; // 設置邊框寬度
+                            ctx.strokeRect(x + offset.x, y + offset.y, 1, 1); // 繪製邊框
                         }
                     }
                 }
             }
         }
 
-        // 計算陰影位置
+        /**
+         * 計算陰影位置（方塊下落到底部的位置）
+         * @returns {Object} 陰影位置 {x, y}
+         */
         function getGhostPosition() {
             const ghost = {
-                pos: { x: player.pos.x, y: player.pos.y },
-                matrix: player.matrix
+                pos: { x: player.pos.x, y: player.pos.y }, // 複製玩家位置
+                matrix: player.matrix // 複製玩家方塊
             };
+            // 一直向下移動直到碰撞
             while (!collide(arena, ghost)) {
                 ghost.pos.y++;
             }
-            ghost.pos.y--;
-            return ghost.pos;
+            ghost.pos.y--; // 回退一步（因為最後一步會碰撞）
+            return ghost.pos; // 返回陰影位置
         }
 
-        // 繪製整個遊戲畫面
+        /**
+         * 繪製整個遊戲畫面
+         */
         function draw() {
+            // 清除畫布
             context.fillStyle = '#051025';
             context.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -1017,7 +1139,7 @@
             context.strokeStyle = '#1a3a60';
             context.lineWidth = 0.02;
             
-            // 豎線
+            // 繪製豎線
             for(let i = 0; i <= COLS; i++) {
                 context.beginPath();
                 context.moveTo(i, 0);
@@ -1025,7 +1147,7 @@
                 context.stroke();
             }
             
-            // 橫線 - 增加橫線格線
+            // 繪製橫線
             for(let i = 0; i <= ROWS; i++) {
                 context.beginPath();
                 context.moveTo(0, i);
@@ -1033,79 +1155,115 @@
                 context.stroke();
             }
 
+            // 繪製遊戲區域
             drawMatrix(arena, {x: 0, y: 0});
 
+            // 如果玩家有方塊，繪製陰影和方塊
             if (player.matrix) {
-                const ghostPos = getGhostPosition();
-                drawMatrix(player.matrix, ghostPos, context, true);
-                drawMatrix(player.matrix, player.pos);
+                const ghostPos = getGhostPosition(); // 獲取陰影位置
+                drawMatrix(player.matrix, ghostPos, context, true); // 繪製陰影
+                drawMatrix(player.matrix, player.pos); // 繪製玩家方塊
             }
         }
 
-        // 繪製下一個方塊預覽
+        /**
+         * 繪製下一個方塊預覽
+         */
         function drawNext() {
+            // 清除預覽畫布
             nextContext.fillStyle = '#000';
             nextContext.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
+            
+            // 計算居中偏移量
             const offsetX = (4 - player.next[0].length) / 2;
             const offsetY = (4 - player.next.length) / 2;
+            
+            // 繪製下一個方塊
             drawMatrix(player.next, {x: offsetX, y: offsetY}, nextContext);
         }
 
-        // 將玩家方塊合併到遊戲區域中
+        /**
+         * 將玩家方塊合併到遊戲區域中
+         * @param {Array} arena - 遊戲區域
+         * @param {Object} player - 玩家對象
+         */
         function merge(arena, player) {
             player.matrix.forEach((row, y) => {
                 row.forEach((value, x) => {
                     if (value !== 0) {
+                        // 將方塊值複製到遊戲區域對應位置
                         arena[y + player.pos.y][x + player.pos.x] = value;
                     }
                 });
             });
         }
 
-        // 旋轉方塊矩陣
+        /**
+         * 旋轉方塊矩陣
+         * @param {Array} matrix - 要旋轉的矩陣
+         * @param {number} dir - 旋轉方向（1為順時針，-1為逆時針）
+         */
         function rotate(matrix, dir) {
             const n = matrix.length;
+            // 轉置矩陣
             for (let y = 0; y < n; y++) {
                 for (let x = 0; x < y; x++) {
+                    // 交換 matrix[x][y] 和 matrix[y][x]
                     [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
                 }
             }
+            // 根據方向反轉行或列
             if (dir > 0) {
-                matrix.forEach(row => row.reverse());
+                matrix.forEach(row => row.reverse()); // 順時針旋轉：反轉每一行
             } else {
-                matrix.reverse();
+                matrix.reverse(); // 逆時針旋轉：反轉整個矩陣
             }
         }
 
-        // 檢測碰撞
+        /**
+         * 檢測碰撞
+         * @param {Array} arena - 遊戲區域
+         * @param {Object} player - 玩家對象
+         * @returns {boolean} 是否發生碰撞
+         */
         function collide(arena, player) {
             const m = player.matrix;
             const o = player.pos;
             for (let y = 0; y < m.length; y++) {
                 for (let x = 0; x < m[y].length; x++) {
+                    // 如果方塊單元格有值且對應的遊戲區域單元格有值（或超出邊界）
                     if (m[y][x] !== 0 && 
                         (arena[y + o.y] && arena[y + o.y][x + o.x]) !== 0) {
-                        return true;
+                        return true; // 發生碰撞
                     }
                 }
             }
-            return false;
+            return false; // 沒有碰撞
         }
 
-        // 掃描並清除已填滿的行
+        /**
+         * 掃描並清除已填滿的行
+         */
         function arenaSweep() {
-            let rowCount = 1;
-            let linesCleared = 0;
+            let rowCount = 1; // 連續消除行數倍數
+            let linesCleared = 0; // 本次消除的行數
+            
+            // 從底部向上掃描
             outer: for (let y = arena.length - 1; y > 0; y--) {
+                // 檢查當前行是否已填滿
                 for (let x = 0; x < arena[y].length; x++) {
-                    if (arena[y][x] === 0) continue outer;
+                    if (arena[y][x] === 0) continue outer; // 如果有空格，跳過此行
                 }
+                
+                // 移除已填滿的行並在頂部添加新行
                 const row = arena.splice(y, 1)[0].fill(0);
                 arena.unshift(row);
-                y++;
+                y++; // 因為移除了一行，需要重新檢查同一位置
+                
+                // 更新分數（連續消除行數越多，分數越高）
                 player.score += rowCount * 10;
-                rowCount *= 2;
-                linesCleared++;
+                rowCount *= 2; // 倍數增加
+                linesCleared++; // 增加消除行數
             }
             
             // 更新消除行數統計
@@ -1114,74 +1272,90 @@
                 document.getElementById('lines').innerText = totalLinesCleared;
             }
             
-            updateScore();
+            updateScore(); // 更新分數顯示
         }
 
-        // 更新分數和等級顯示
+        /**
+         * 更新分數和等級顯示
+         */
         function updateScore() {
-            document.getElementById('score').innerText = player.score;
+            document.getElementById('score').innerText = player.score; // 更新分數顯示
+            // 如果當前分數超過最高分，更新最高分
             if(player.score > highScore) {
                 highScore = player.score;
-                localStorage.setItem('tetris_highscore', highScore);
-                document.getElementById('highscore').innerText = highScore;
+                localStorage.setItem('tetris_highscore', highScore); // 保存到本地存儲
+                document.getElementById('highscore').innerText = highScore; // 更新最高分顯示
             }
         }
 
-        // 增加等級的函數
+        /**
+         * 增加等級
+         */
         function increaseLevel() {
-            level++;
-            dropInterval = Math.max(50, 1000 - (level - 1) * 50);
-            document.getElementById('level').innerText = level;
-            updateSpeedDisplay();
+            level++; // 等級增加
+            dropInterval = Math.max(50, 1000 - (level - 1) * 50); // 計算新的下落間隔
+            document.getElementById('level').innerText = level; // 更新等級顯示
+            updateSpeedDisplay(); // 更新速度顯示
         }
 
-        // 減少等級的函數
+        /**
+         * 減少等級
+         */
         function decreaseLevel() {
             if (level > 1) {
-                level--;
-                dropInterval = Math.max(50, 1000 - (level - 1) * 50);
-                document.getElementById('level').innerText = level;
-                updateSpeedDisplay();
+                level--; // 等級減少
+                dropInterval = Math.max(50, 1000 - (level - 1) * 50); // 計算新的下落間隔
+                document.getElementById('level').innerText = level; // 更新等級顯示
+                updateSpeedDisplay(); // 更新速度顯示
             }
         }
 
-        // 直接下墜功能（硬降）
+        /**
+         * 直接下墜功能（硬降）
+         */
         function playerHardDrop() {
-            if (!player.matrix || isPaused) return;
+            if (!player.matrix || isPaused) return; // 如果沒有方塊或遊戲暫停，則返回
             
-            const ghostPos = getGhostPosition();
-            player.pos.y = ghostPos.y;
-            merge(arena, player);
-            playerReset();
-            arenaSweep();
-            dropCounter = 0;
+            const ghostPos = getGhostPosition(); // 獲取陰影位置
+            player.pos.y = ghostPos.y; // 直接移動到陰影位置
+            merge(arena, player); // 合併到遊戲區域
+            playerReset(); // 重置玩家方塊
+            arenaSweep(); // 掃描並清除已填滿的行
+            dropCounter = 0; // 重置下落計數器
         }
 
-        // 重置玩家方塊（生成新方塊）
+        /**
+         * 重置玩家方塊（生成新方塊）
+         */
         function playerReset() {
+            // 如果沒有下一個方塊，生成一個
             if(player.next === null) {
                 player.next = createPiece(pieces[Math.floor(Math.random() * pieces.length)]);
             }
             
+            // 設置當前方塊為下一個方塊，並生成新的下一個方塊
             player.matrix = player.next;
             player.next = createPiece(pieces[Math.floor(Math.random() * pieces.length)]);
-            drawNext();
+            drawNext(); // 繪製下一個方塊預覽
             
+            // 設置初始位置（居中）
             player.pos.y = 0;
             player.pos.x = Math.floor(arena[0].length / 2) - Math.floor(player.matrix[0].length / 2);
 
             // 檢查新方塊是否立即發生碰撞（遊戲結束條件）
             if (collide(arena, player)) {
-                gameOver();
+                gameOver(); // 遊戲結束
             }
         }
 
-        // 遊戲結束處理
+        /**
+         * 遊戲結束處理
+         */
         function gameOver() {
-            isGameOver = true;
-            isPaused = true;
-            stopAutoPlay();
-            aiIndicator.classList.remove('active');
+            isGameOver = true; // 設置遊戲結束標誌
+            isPaused = true; // 暫停遊戲
+            stopAutoPlay(); // 停止AI自動遊戲
+            aiIndicator.classList.remove('active'); // 隱藏AI指示器
             
             // 更新最終統計數據
             document.getElementById('final-score').innerText = player.score;
@@ -1192,14 +1366,16 @@
             document.getElementById('game-over-overlay').style.display = 'flex';
         }
 
-        // 返回主菜單
+        /**
+         * 返回主菜單
+         */
         function backToMenu() {
             // 隱藏遊戲結束畫面
             document.getElementById('game-over-overlay').style.display = 'none';
             
             // 重置遊戲狀態
             isGameOver = false;
-            arena.forEach(row => row.fill(0));
+            arena.forEach(row => row.fill(0)); // 清空遊戲區域
             player.score = 0;
             totalLinesCleared = 0;
             level = 1;
@@ -1218,18 +1394,20 @@
             isPaused = true;
         }
 
-        // 重新開始遊戲
+        /**
+         * 重新開始遊戲
+         */
         function restartGame() {
             // 隱藏遊戲結束畫面
             document.getElementById('game-over-overlay').style.display = 'none';
             
             // 重置遊戲狀態
             isGameOver = false;
-            arena.forEach(row => row.fill(0));
+            arena.forEach(row => row.fill(0)); // 清空遊戲區域
             player.score = 0;
             totalLinesCleared = 0;
             level = 1;
-            dropInterval = gameModes[gameMode].baseSpeed;
+            dropInterval = gameModes[gameMode].baseSpeed; // 重置下落速度
             
             // 更新顯示
             document.getElementById('score').innerText = player.score;
@@ -1248,173 +1426,214 @@
             update();
         }
 
-        // 玩家方塊下落一格（正常下落）
+        /**
+         * 玩家方塊下落一格（正常下落）
+         */
         function playerDrop() {
-            player.pos.y++;
+            player.pos.y++; // 向下移動一格
             if (collide(arena, player)) {
+                // 如果發生碰撞，回退一步
                 player.pos.y--;
-                merge(arena, player);
-                playerReset();
-                arenaSweep();
+                merge(arena, player); // 合併到遊戲區域
+                playerReset(); // 重置玩家方塊
+                arenaSweep(); // 掃描並清除已填滿的行
             }
-            dropCounter = 0;
+            dropCounter = 0; // 重置下落計數器
         }
 
-        // 玩家方塊加速下落（軟降）
+        /**
+         * 玩家方塊加速下落（軟降）
+         */
         function playerSoftDrop() {
-            if (!player.matrix || isPaused) return;
+            if (!player.matrix || isPaused) return; // 如果沒有方塊或遊戲暫停，則返回
             
-            player.pos.y++;
+            player.pos.y++; // 向下移動一格
             if (collide(arena, player)) {
+                // 如果發生碰撞，回退一步
                 player.pos.y--;
-                merge(arena, player);
-                playerReset();
-                arenaSweep();
-                isSoftDropping = false;
+                merge(arena, player); // 合併到遊戲區域
+                playerReset(); // 重置玩家方塊
+                arenaSweep(); // 掃描並清除已填滿的行
+                isSoftDropping = false; // 停止軟降
             }
-            player.score += 1;
-            updateScore();
+            player.score += 1; // 軟降加分
+            updateScore(); // 更新分數顯示
         }
 
-        // 玩家方塊水平移動
+        /**
+         * 玩家方塊水平移動
+         * @param {number} offset - 移動方向（-1為左，1為右）
+         */
         function playerMove(offset) {
-            player.pos.x += offset;
+            player.pos.x += offset; // 移動方塊
             if (collide(arena, player)) {
-                player.pos.x -= offset;
+                player.pos.x -= offset; // 如果發生碰撞，回退
             }
         }
 
-        // 玩家方塊旋轉
+        /**
+         * 玩家方塊旋轉
+         * @param {number} dir - 旋轉方向（1為順時針，-1為逆時針）
+         */
         function playerRotate(dir) {
-            const pos = player.pos.x;
-            let offset = 1;
-            rotate(player.matrix, dir);
+            const pos = player.pos.x; // 保存原始位置
+            let offset = 1; // 初始偏移量
+            rotate(player.matrix, dir); // 旋轉方塊
+            // 如果旋轉後發生碰撞，嘗試左右移動來避免碰撞
             while (collide(arena, player)) {
-                player.pos.x += offset;
-                offset = -(offset + (offset > 0 ? 1 : -1));
+                player.pos.x += offset; // 嘗試移動
+                offset = -(offset + (offset > 0 ? 1 : -1)); // 改變方向並增加距離
+                // 如果偏移量超過方塊寬度，恢復原始狀態並退出
                 if (offset > player.matrix[0].length) {
-                    rotate(player.matrix, -dir);
-                    player.pos.x = pos;
+                    rotate(player.matrix, -dir); // 恢復旋轉
+                    player.pos.x = pos; // 恢復位置
                     return;
                 }
             }
         }
 
-        // 遊戲主更新循環
+        /**
+         * 遊戲主更新循環
+         * @param {number} time - 當前時間戳
+         */
         function update(time = 0) {
-            if(isPaused) return;
+            if(isPaused) return; // 如果遊戲暫停，不更新
             
-            const deltaTime = time - lastTime;
-            lastTime = time;
+            const deltaTime = time - lastTime; // 計算時間差
+            lastTime = time; // 更新最後時間
             
-            dropCounter += deltaTime;
+            dropCounter += deltaTime; // 增加下落計數器
             
+            // 根據是否軟降來決定下落邏輯
             if (isSoftDropping) {
+                // 軟降：更快的下落速度
                 if (dropCounter > softDropInterval) {
                     playerSoftDrop();
                     dropCounter = 0;
                 }
             } else {
+                // 正常下落
                 if (dropCounter > dropInterval) {
                     playerDrop();
                     dropCounter = 0;
                 }
             }
             
-            draw();
-            requestAnimationFrame(update);
+            draw(); // 繪製遊戲畫面
+            requestAnimationFrame(update); // 請求下一幀更新
         }
 
-        // 開始遊戲
+        /**
+         * 開始遊戲
+         */
         function startGame() {
-            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none'; // 隱藏開始菜單
             if(isGameOver) { 
-                isGameOver = false; 
-                playerReset(); 
+                isGameOver = false; // 重置遊戲結束標誌
+                playerReset(); // 重置玩家方塊
             }
             if(player.matrix === null) {
-                playerReset();
+                playerReset(); // 如果沒有方塊，重置玩家方塊
             }
             
-            isPaused = false;
-            update();
+            isPaused = false; // 取消暫停
+            update(); // 開始遊戲更新循環
         }
 
-        // === 控制輸入 ===
-        
+        // =================================================================
+        // 控制輸入處理
+        // =================================================================
+
         // 鍵盤控制事件監聽
         document.addEventListener('keydown', event => {
-            if(isPaused) return;
+            if(isPaused) return; // 如果遊戲暫停，不處理按鍵
             
-            if (event.keyCode === 37) playerMove(-1);
-            else if (event.keyCode === 39) playerMove(1);
+            // 根據按鍵代碼執行相應操作
+            if (event.keyCode === 37) playerMove(-1); // 左箭頭：向左移動
+            else if (event.keyCode === 39) playerMove(1); // 右箭頭：向右移動
             else if (event.keyCode === 40) {
+                // 下箭頭：開始軟降
                 isSoftDropping = true;
-                dropCounter = softDropInterval;
-                event.preventDefault();
+                dropCounter = softDropInterval; // 立即觸發一次軟降
+                event.preventDefault(); // 防止默認行為（滾動頁面）
             }
-            else if (event.keyCode === 81 || event.keyCode === 38) playerRotate(1);
+            else if (event.keyCode === 81 || event.keyCode === 38) playerRotate(1); // Q鍵或上箭頭：旋轉
             else if (event.keyCode === 107 || event.key === '+' || event.keyCode === 187) {
+                // 加號鍵：增加等級
                 increaseLevel();
-                event.preventDefault();
+                event.preventDefault(); // 防止默認行為
             }
             else if (event.keyCode === 109 || event.key === '-' || event.keyCode === 189) {
+                // 減號鍵：減少等級
                 decreaseLevel();
-                event.preventDefault();
+                event.preventDefault(); // 防止默認行為
             }
             else if (event.keyCode === 32) {
+                // 空格鍵：硬降
                 playerHardDrop();
-                event.preventDefault();
+                event.preventDefault(); // 防止默認行為
             }
-            else if (event.keyCode === 80) { // P鍵暫停
+            else if (event.keyCode === 80) { // P鍵：暫停/繼續
                 togglePause();
-                event.preventDefault();
+                event.preventDefault(); // 防止默認行為
             }
-            else if (event.keyCode === 67) { // C鍵切換AI託管
+            else if (event.keyCode === 67) { // C鍵：切換AI託管
                 toggleAutoPlay();
-                event.preventDefault();
+                event.preventDefault(); // 防止默認行為
             }
         });
 
         // 鍵盤釋放事件監聽
         document.addEventListener('keyup', event => {
+            // 下箭鍵釋放：停止軟降
             if (event.keyCode === 40) {
                 isSoftDropping = false;
                 dropCounter = 0;
             }
         });
 
-        // 設置觸控按鈕
+        /**
+         * 設置觸控按鈕
+         * @param {string} id - 按鈕元素ID
+         * @param {Function} action - 按鈕觸發的動作
+         * @param {boolean} isRepeatable - 是否可重複觸發（長按）
+         */
         function setupBtn(id, action, isRepeatable = false) {
-            const btn = document.getElementById(id);
-            let timer = null;
+            const btn = document.getElementById(id); // 獲取按鈕元素
+            let timer = null; // 重複計時器
 
+            // 開始動作（按下按鈕）
             const startAction = (e) => {
-                e.preventDefault();
-                if(isPaused) return;
+                e.preventDefault(); // 防止默認行為
+                if(isPaused) return; // 如果遊戲暫停，不執行動作
                 
-                btn.classList.add('active');
-                action();
+                btn.classList.add('active'); // 添加激活樣式
+                action(); // 執行動作
 
+                // 如果是可重複觸發的按鈕，設置計時器
                 if (isRepeatable) {
                     timer = setInterval(() => {
-                        action();
-                    }, softDropInterval);
+                        action(); // 重複執行動作
+                    }, softDropInterval); // 使用軟降間隔
                 }
             };
 
+            // 結束動作（釋放按鈕）
             const endAction = (e) => {
-                e.preventDefault();
-                btn.classList.remove('active');
+                e.preventDefault(); // 防止默認行為
+                btn.classList.remove('active'); // 移除激活樣式
+                // 清除重複計時器
                 if (timer) {
                     clearInterval(timer);
                     timer = null;
                 }
+                // 如果是下落按鈕，停止軟降
                 if (id === 'btn-down') {
                     isSoftDropping = false;
                 }
             };
 
+            // 綁定事件監聽器
             btn.addEventListener('touchstart', startAction, {passive: false});
             btn.addEventListener('touchend', endAction);
             btn.addEventListener('mousedown', startAction);
@@ -1423,28 +1642,34 @@
         }
 
         // 設置各個控制按鈕
-        setupBtn('btn-left', () => playerMove(-1));
-        setupBtn('btn-right', () => playerMove(1));
+        setupBtn('btn-left', () => playerMove(-1)); // 左移按鈕
+        setupBtn('btn-right', () => playerMove(1)); // 右移按鈕
         setupBtn('btn-down', () => { 
+            // 下落按鈕（可重複觸發）
             isSoftDropping = true;
             playerSoftDrop();
         }, true);
-        setupBtn('btn-rotate', () => playerRotate(1));
-        setupBtn('btn-hard-drop', () => playerHardDrop());
+        setupBtn('btn-rotate', () => playerRotate(1)); // 旋轉按鈕
+        setupBtn('btn-hard-drop', () => playerHardDrop()); // 硬降按鈕
 
         // 初始化畫布大小
         resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('resize', resizeCanvas); // 窗口大小變化時重新調整畫布
 
-        // 計算消除的行數
+        /**
+         * 計算消除的行數
+         * @param {Array} testArena - 測試場地
+         * @returns {number} 消除的行數
+         */
         function countLinesCleared(testArena) {
-            let lines = 0;
+            let lines = 0; // 初始化行數計數
             for (let y = 0; y < ROWS; y++) {
+                // 檢查當前行是否全部填滿
                 if (testArena[y].every(cell => cell !== 0)) {
-                    lines++;
+                    lines++; // 增加行數計數
                 }
             }
-            return lines;
+            return lines; // 返回消除的行數
         }
     </script>
 </body>
