@@ -13,6 +13,7 @@
             --btn-color: #1a9ba0;
             --btn-active: #0e5a5e;
             --btn-glow: rgba(77, 201, 207, 0.6);
+            --mobile-scale: 0.9; /* 手机端缩放比例 */
         }
 
         body {
@@ -37,6 +38,8 @@
             margin-bottom: 10px;
             max-height: 80vh;
             position: relative;
+            transform: scale(var(--mobile-scale));
+            transform-origin: top center;
         }
 
         canvas#tetris {
@@ -110,6 +113,8 @@
             padding: 10px 2px;
             box-sizing: border-box;
             gap: 3px;
+            transform: scale(var(--mobile-scale));
+            transform-origin: top center;
         }
 
         .btn {
@@ -183,6 +188,8 @@
             align-items: center;
             justify-content: center;
             z-index: 20;
+            transform: scale(var(--mobile-scale));
+            transform-origin: center center;
         }
 
         #start-title {
@@ -243,6 +250,8 @@
             align-items: center;
             justify-content: center;
             z-index: 30;
+            transform: scale(var(--mobile-scale));
+            transform-origin: center center;
         }
 
         #game-over-title {
@@ -323,12 +332,21 @@
             color: #8af;
             display: none;
             z-index: 40;
+            transform: scale(var(--mobile-scale));
+            transform-origin: top left;
         }
 
         #ai-indicator.active {
             display: block;
             color: #4dc9cf;
             border-color: #4dc9cf;
+        }
+
+        /* 桌面端样式 - 不使用缩放 */
+        @media (min-width: 768px) {
+            #game-container, #controls, #overlay, #game-over-overlay, #ai-indicator {
+                transform: scale(1) !important;
+            }
         }
     </style>
 </head>
