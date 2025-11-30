@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>俄羅斯方塊 - 智能AI版</title>
     <style>
+        /* 樣式部分保持不變 */
         :root {
             --bg-color: #051025;
             --panel-bg: rgba(0, 30, 70, 0.8);
@@ -331,6 +332,19 @@
             border-color: #4dc9cf;
         }
 
+        /* 最高分面板三擊特效 */
+        .panel-box.highscore-triple-click {
+            animation: tripleClickEffect 0.5s;
+        }
+
+        @keyframes tripleClickEffect {
+            0% { background-color: rgba(0, 30, 70, 0.8); }
+            25% { background-color: rgba(26, 155, 160, 0.6); }
+            50% { background-color: rgba(0, 30, 70, 0.8); }
+            75% { background-color: rgba(26, 155, 160, 0.6); }
+            100% { background-color: rgba(0, 30, 70, 0.8); }
+        }
+
         /* 移動端適配 */
         @media (max-width: 767px) {
             #game-container {
@@ -376,7 +390,6 @@
                 font-size: 14px;
             }
             
-            /* 確保下一個方塊預覽在移動端正確顯示 */
             #next-piece-canvas {
                 width: 60px !important;
                 height: 60px !important;
@@ -412,7 +425,8 @@
                 <div class="panel-label">Next</div>
                 <canvas id="next-piece-canvas" width="60" height="60"></canvas>
             </div>
-            <div class="panel-box">
+            <!-- 最高分數面板 - 添加三擊功能 -->
+            <div class="panel-box" id="highscore-panel">
                 <div class="panel-label">Highscore</div>
                 <div id="highscore" class="panel-value">0</div>
             </div>
@@ -555,6 +569,10 @@
         let lastAutoPlayTime = 0; // 上次AI自動遊戲時間
         let totalLinesCleared = 0; // 總消除行數
 
+        // 三擊計數器變量 - 用於檢測連續點擊
+        let tripleClickCount = 0; // 點擊計數
+        let tripleClickTimer = null; // 計時器
+
         // 遊戲模式設定
         const gameModes = {
             'beginner': {
@@ -608,278 +626,291 @@
         ];
 
         // =================================================================
-        // 基於El-Tetris算法的AI改進
+        // 重新實現正確的AI算法
         // =================================================================
 
-        // El-Tetris算法的特徵權重
-        const EL_TETRIS_WEIGHTS = {
-            landingHeight: -4.500158825082766, // 著陸高度權重
-            rowsEliminated: 3.4181268101392694, // 消除行數權重
-            rowTransitions: -3.2178882868487753, // 行變換權重
-            colTransitions: -9.348695305445199, // 列變換權重
-            holes: -7.899265427351652, // 空洞數權重
-            wellSums: -3.3855972247263626 // 井深總和權重
-        };
+        class TetrisIntelligence {
+            constructor() {
+                // 使用原始AI的權重參數
+                this.weights = {
+                    aggregateHeight: -0.510066,
+                    completeLines: 0.760666,
+                    holes: -0.35663,
+                    bumpiness: -0.184483
+                };
+            }
 
-        /**
-         * 尋找最佳移動 - 使用El-Tetris算法
-         */
-        function findBestMove() {
-            let bestScore = -Infinity; // 初始化最佳分數
-            let bestMove = null; // 初始化最佳移動
-            const originalMatrix = JSON.parse(JSON.stringify(player.matrix)); // 保存原始方塊矩陣
-            const originalPos = { ...player.pos }; // 保存原始位置
-            
-            // 測試所有可能的旋轉狀態 (0-3)
-            for (let rotation = 0; rotation < 4; rotation++) {
-                // 重置方塊狀態
-                player.matrix = JSON.parse(JSON.stringify(originalMatrix));
-                player.pos = { ...originalPos };
-                
-                // 應用旋轉
-                for (let r = 0; r < rotation; r++) {
-                    rotate(player.matrix, 1); // 順時針旋轉
-                    // 如果旋轉後發生碰撞，跳過這個旋轉
-                    if (collide(arena, player)) {
-                        player.matrix = JSON.parse(JSON.stringify(originalMatrix));
-                        break;
-                    }
-                }
-                
-                const pieceWidth = player.matrix[0].length; // 獲取方塊寬度
-                
-                // 測試所有可能的水準位置
-                for (let x = 0; x <= COLS - pieceWidth; x++) {
-                    player.pos.x = x; // 設置測試位置
-                    player.pos.y = 0;
+            // 尋找最佳移動
+            findOptimalMove(arena, currentPiece) {
+                let bestScore = -Infinity;
+                let bestPosition = null;
+                let bestRotation = 0;
+
+                // 嘗試所有可能的旋轉
+                for (let rotation = 0; rotation < 4; rotation++) {
+                    const testPiece = this.copyPiece(currentPiece);
                     
-                    if (!collide(arena, player)) {
-                        const score = evaluatePositionElTetris(x, rotation); // 評估位置分數
-                        if (score > bestScore) {
-                            bestScore = score; // 更新最佳分數
-                            bestMove = { x: x, rotation: rotation }; // 更新最佳移動
-                        }
+                    // 應用旋轉
+                    for (let i = 0; i < rotation; i++) {
+                        if (!this.rotatePiece(testPiece, arena)) break;
                     }
-                }
-            }
-            
-            // 恢復原始狀態
-            player.matrix = originalMatrix;
-            player.pos = originalPos;
-            
-            return bestMove; // 返回最佳移動
-        }
 
-        /**
-         * 評估位置分數 - 使用El-Tetris評估函數
-         */
-        function evaluatePositionElTetris(x, rotation) {
-            const testArena = JSON.parse(JSON.stringify(arena)); // 創建測試場地副本
-            const testPlayer = {
-                matrix: JSON.parse(JSON.stringify(player.matrix)), // 創建測試方塊副本
-                pos: { x: x, y: 0 } // 設置測試位置
-            };
-            
-            // 應用旋轉
-            for (let r = 0; r < rotation; r++) {
-                rotate(testPlayer.matrix, 1); // 旋轉方塊
-            }
-            
-            // 模擬下落到底部
-            while (!collide(testArena, testPlayer)) {
-                testPlayer.pos.y++; // 向下移動
-            }
-            testPlayer.pos.y--; // 回退一步（因為最後一步會碰撞）
-            
-            // 合併到測試場地
-            const mergedArena = JSON.parse(JSON.stringify(testArena));
-            merge(mergedArena, testPlayer);
-            
-            // 計算El-Tetris的六個特徵
-            const features = calculateElTetrisFeatures(mergedArena, testPlayer);
-            
-            // 計算加權分數
-            let score = 0;
-            score += features.landingHeight * EL_TETRIS_WEIGHTS.landingHeight;
-            score += features.rowsEliminated * EL_TETRIS_WEIGHTS.rowsEliminated;
-            score += features.rowTransitions * EL_TETRIS_WEIGHTS.rowTransitions;
-            score += features.colTransitions * EL_TETRIS_WEIGHTS.colTransitions;
-            score += features.holes * EL_TETRIS_WEIGHTS.holes;
-            score += features.wellSums * EL_TETRIS_WEIGHTS.wellSums;
-            
-            return score; // 返回計算出的分數
-        }
-
-        /**
-         * 計算El-Tetris的六個特徵
-         */
-        function calculateElTetrisFeatures(mergedArena, testPlayer) {
-            // 1. 下落高度: 放置位置的高度（從底部計算）
-            const landingHeight = ROWS - testPlayer.pos.y - Math.floor(testPlayer.matrix.length / 2);
-            
-            // 2. 消行數: 計算當前方塊放置後消除的行數
-            const rowsEliminated = countLinesCleared(mergedArena);
-            
-            // 3. 行變換: 每行中空塊與填充塊相鄰的次數
-            const rowTransitions = calculateRowTransitionsElTetris(mergedArena);
-            
-            // 4. 列變換: 每列中空塊與填充塊相鄰的次數
-            const colTransitions = calculateColTransitionsElTetris(mergedArena);
-            
-            // 5. 空洞數: 被填充塊覆蓋的空洞數量
-            const holes = calculateHolesElTetris(mergedArena);
-            
-            // 6. 井深總和: 連續的井深累加和
-            const wellSums = calculateWellSumsElTetris(mergedArena);
-            
-            return {
-                landingHeight,
-                rowsEliminated,
-                rowTransitions,
-                colTransitions,
-                holes,
-                wellSums
-            };
-        }
-
-        /**
-         * 計算行變換 - El-Tetris版本
-         */
-        function calculateRowTransitionsElTetris(mergedArena) {
-            let transitions = 0; // 初始化變換計數
-            for (let y = 0; y < ROWS; y++) {
-                // 從左邊界開始（假設邊界是填充的）
-                let previousFilled = 1;
-                for (let x = 0; x < COLS; x++) {
-                    const filled = mergedArena[y][x] !== 0 ? 1 : 0; // 判斷單元格是否填充
-                    if (filled !== previousFilled) {
-                        transitions++; // 如果狀態變化，增加計數
+                    // 移動到最左邊
+                    while (this.canMoveLeft(testPiece, arena)) {
+                        testPiece.pos.x--;
                     }
-                    previousFilled = filled; // 更新前一個狀態
-                }
-                // 檢查右邊界
-                if (previousFilled !== 1) {
-                    transitions++; // 右邊界變化計數
-                }
-            }
-            return transitions; // 返回總變換數
-        }
 
-        /**
-         * 計算列變換 - El-Tetris版本
-         */
-        function calculateColTransitionsElTetris(mergedArena) {
-            let transitions = 0; // 初始化變換計數
-            for (let x = 0; x < COLS; x++) {
-                // 從頂部開始（假設邊界是填充的）
-                let previousFilled = 1;
-                for (let y = 0; y < ROWS; y++) {
-                    const filled = mergedArena[y][x] !== 0 ? 1 : 0; // 判斷單元格是否填充
-                    if (filled !== previousFilled) {
-                        transitions++; // 如果狀態變化，增加計數
-                    }
-                    previousFilled = filled; // 更新前一個狀態
-                }
-                // 檢查底部邊界
-                if (previousFilled !== 1) {
-                    transitions++; // 底部邊界變化計數
-                }
-            }
-            return transitions; // 返回總變換數
-        }
-
-        /**
-         * 計算空洞數 - El-Tetris版本
-         */
-        function calculateHolesElTetris(mergedArena) {
-            let holes = 0; // 初始化空洞計數
-            for (let x = 0; x < COLS; x++) {
-                let foundBlock = false; // 標記是否在該列找到方塊
-                for (let y = 0; y < ROWS; y++) {
-                    if (mergedArena[y][x] !== 0) {
-                        foundBlock = true; // 找到方塊
-                    } else if (foundBlock) {
-                        // 發現空洞（在該列中至少有一個方塊上方存在空格）
-                        holes++; // 增加空洞計數
-                    }
-                }
-            }
-            return holes; // 返回空洞總數
-        }
-
-        /**
-         * 計算井深總和 - El-Tetris版本
-         */
-        function calculateWellSumsElTetris(mergedArena) {
-            let wellSums = 0; // 初始化井深總和
-            
-            // 檢查每一列
-            for (let x = 0; x < COLS; x++) {
-                // 檢查每一行
-                for (let y = 0; y < ROWS; y++) {
-                    // 如果當前單元是空的
-                    if (mergedArena[y][x] === 0) {
-                        // 檢查是否形成井（左右都有方塊或邊界）
-                        const leftBlocked = (x === 0) || (mergedArena[y][x-1] !== 0);
-                        const rightBlocked = (x === COLS-1) || (mergedArena[y][x+1] !== 0);
+                    // 嘗試所有可能的水平位置
+                    while (this.isValidPosition(testPiece, arena)) {
+                        const landedPiece = this.copyPiece(testPiece);
                         
-                        if (leftBlocked && rightBlocked) {
-                            // 計算井的深度
-                            let depth = 1;
-                            let currentY = y + 1;
+                        // 模擬方塊下落到底部
+                        while (this.canMoveDown(landedPiece, arena)) {
+                            landedPiece.pos.y++;
+                        }
+
+                        // 創建測試場地來評估這個位置
+                        const testArena = this.copyArena(arena);
+                        this.placePiece(testArena, landedPiece);
+                        
+                        // 計算分數
+                        const score = this.evaluatePosition(testArena);
+                        
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestPosition = this.copyPiece(testPiece);
+                            bestRotation = rotation;
+                        }
+
+                        testPiece.pos.x++;
+                    }
+                }
+
+                return {
+                    piece: bestPosition,
+                    rotation: bestRotation,
+                    score: bestScore
+                };
+            }
+
+            // 評估位置質量
+            evaluatePosition(arena) {
+                const features = {
+                    aggregateHeight: this.calculateTotalHeight(arena),
+                    completeLines: this.countCompleteLines(arena),
+                    holes: this.countHoles(arena),
+                    bumpiness: this.calculateRoughness(arena)
+                };
+
+                // 使用原始AI的評估公式
+                return this.weights.aggregateHeight * features.aggregateHeight +
+                       this.weights.completeLines * features.completeLines +
+                       this.weights.holes * features.holes +
+                       this.weights.bumpiness * features.bumpiness;
+            }
+
+            // 計算總高度
+            calculateTotalHeight(arena) {
+                let total = 0;
+                for (let col = 0; col < COLS; col++) {
+                    total += this.getColumnHeight(arena, col);
+                }
+                return total;
+            }
+
+            // 計算列高度
+            getColumnHeight(arena, col) {
+                for (let row = 0; row < ROWS; row++) {
+                    if (arena[row][col] !== 0) {
+                        return ROWS - row;
+                    }
+                }
+                return 0;
+            }
+
+            // 計算完成的行數
+            countCompleteLines(arena) {
+                let count = 0;
+                for (let row = 0; row < ROWS; row++) {
+                    if (this.isRowComplete(arena, row)) {
+                        count++;
+                    }
+                }
+                return count;
+            }
+
+            // 檢查行是否完成
+            isRowComplete(arena, row) {
+                for (let col = 0; col < COLS; col++) {
+                    if (arena[row][col] === 0) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            // 計算空洞數量
+            countHoles(arena) {
+                let holes = 0;
+                for (let col = 0; col < COLS; col++) {
+                    let blockFound = false;
+                    for (let row = 0; row < ROWS; row++) {
+                        if (arena[row][col] !== 0) {
+                            blockFound = true;
+                        } else if (blockFound && arena[row][col] === 0) {
+                            holes++;
+                        }
+                    }
+                }
+                return holes;
+            }
+
+            // 計算不平整度
+            calculateRoughness(arena) {
+                let bumpiness = 0;
+                const heights = [];
+                
+                for (let col = 0; col < COLS; col++) {
+                    heights.push(this.getColumnHeight(arena, col));
+                }
+                
+                for (let i = 0; i < heights.length - 1; i++) {
+                    bumpiness += Math.abs(heights[i] - heights[i + 1]);
+                }
+                
+                return bumpiness;
+            }
+
+            // 複製遊戲場地
+            copyArena(arena) {
+                return arena.map(row => [...row]);
+            }
+
+            // 複製方塊
+            copyPiece(piece) {
+                return {
+                    matrix: piece.matrix.map(row => [...row]),
+                    pos: { ...piece.pos }
+                };
+            }
+
+            // 旋轉方塊
+            rotatePiece(piece, arena) {
+                const originalMatrix = piece.matrix.map(row => [...row]);
+                const n = piece.matrix.length;
+                
+                // 轉置矩陣
+                for (let i = 0; i < n; i++) {
+                    for (let j = 0; j < i; j++) {
+                        [piece.matrix[i][j], piece.matrix[j][i]] = 
+                        [piece.matrix[j][i], piece.matrix[i][j]];
+                    }
+                }
+                
+                // 反轉每一行（順時針旋轉）
+                piece.matrix.forEach(row => row.reverse());
+                
+                // 檢查旋轉後是否有效
+                if (!this.isValidPosition(piece, arena)) {
+                    piece.matrix = originalMatrix;
+                    return false;
+                }
+                
+                return true;
+            }
+
+            // 檢查是否可以向左移動
+            canMoveLeft(piece, arena) {
+                piece.pos.x--;
+                const canMove = this.isValidPosition(piece, arena);
+                piece.pos.x++;
+                return canMove;
+            }
+
+            // 檢查是否可以向下移動
+            canMoveDown(piece, arena) {
+                piece.pos.y++;
+                const canMove = this.isValidPosition(piece, arena);
+                piece.pos.y--;
+                return canMove;
+            }
+
+            // 檢查位置是否有效
+            isValidPosition(piece, arena) {
+                const matrix = piece.matrix;
+                const pos = piece.pos;
+                
+                for (let y = 0; y < matrix.length; y++) {
+                    for (let x = 0; x < matrix[y].length; x++) {
+                        if (matrix[y][x] !== 0) {
+                            const boardX = pos.x + x;
+                            const boardY = pos.y + y;
                             
-                            // 向下檢查連續的井單元
-                            while (currentY < ROWS && mergedArena[currentY][x] === 0) {
-                                // 檢查當前單元是否仍然是井
-                                const currentLeftBlocked = (x === 0) || (mergedArena[currentY][x-1] !== 0);
-                                const currentRightBlocked = (x === COLS-1) || (mergedArena[currentY][x+1] !== 0);
-                                
-                                if (currentLeftBlocked && currentRightBlocked) {
-                                    depth++; // 增加井深
-                                    currentY++; // 檢查下一行
-                                } else {
-                                    break; // 不再形成井，退出循環
-                                }
+                            if (boardX < 0 || boardX >= COLS || 
+                                boardY >= ROWS || 
+                                (boardY >= 0 && arena[boardY][boardX] !== 0)) {
+                                return false;
                             }
-                            
-                            // 井深連加和：1 + 2 + 3 + ... + depth
-                            wellSums += (depth * (depth + 1)) / 2;
-                            
-                            // 跳過已計算的井單元
-                            y = currentY - 1;
+                        }
+                    }
+                }
+                return true;
+            }
+
+            // 放置方塊到場地
+            placePiece(arena, piece) {
+                const matrix = piece.matrix;
+                const pos = piece.pos;
+                
+                for (let y = 0; y < matrix.length; y++) {
+                    for (let x = 0; x < matrix[y].length; x++) {
+                        if (matrix[y][x] !== 0) {
+                            const boardY = pos.y + y;
+                            if (boardY >= 0) {
+                                arena[boardY][pos.x + x] = matrix[y][x];
+                            }
                         }
                     }
                 }
             }
-            
-            return wellSums; // 返回井深總和
         }
 
+        // 創建AI實例
+        const gameAI = new TetrisIntelligence();
+
+        // =================================================================
+        // 改進的AI移動邏輯
+        // =================================================================
+
         /**
-         * AI移動邏輯 - 使用El-Tetris算法
+         * AI移動邏輯 - 使用正確的AI算法
          */
         function autoPlayMove() {
-            // 如果沒有方塊、遊戲暫停或未啟用AI，則返回
             if (!player.matrix || isPaused || !isAutoPlay) return;
             
-            // 尋找最佳移動
-            const bestMove = findBestMove();
+            // 使用AI計算最佳移動
+            const bestMove = gameAI.findOptimalMove(arena, {
+                matrix: player.matrix,
+                pos: { ...player.pos }
+            });
             
-            // 如果找到最佳移動
-            if (bestMove) {
+            if (bestMove && bestMove.piece) {
                 // 執行旋轉
-                const rotationsNeeded = bestMove.rotation;
-                for (let i = 0; i < rotationsNeeded; i++) {
-                    playerRotate(1); // 旋轉方塊
+                for (let i = 0; i < bestMove.rotation; i++) {
+                    playerRotate(1);
                 }
                 
-                // 執行水平移動
-                const moveDirection = bestMove.x - player.pos.x;
-                if (moveDirection !== 0) {
-                    const steps = Math.abs(moveDirection); // 移動步數
-                    const direction = Math.sign(moveDirection); // 移動方向
-                    for (let i = 0; i < steps; i++) {
-                        playerMove(direction); // 移動方塊
+                // 執行水平移動到目標位置
+                const targetX = bestMove.piece.pos.x;
+                const currentX = player.pos.x;
+                const moveDirection = Math.sign(targetX - currentX);
+                const steps = Math.abs(targetX - currentX);
+                
+                for (let i = 0; i < steps; i++) {
+                    if (moveDirection > 0) {
+                        playerMove(1);
+                    } else {
+                        playerMove(-1);
                     }
                 }
                 
@@ -889,27 +920,74 @@
         }
 
         // =================================================================
-        // 遊戲核心邏輯
+        // 新增功能：三擊最高分面板切換AI託管
+        // =================================================================
+
+        /**
+         * 初始化三擊檢測功能
+         */
+        function initTripleClickFeature() {
+            const highscorePanel = document.getElementById('highscore-panel');
+            
+            // 為最高分面板添加點擊事件監聽器
+            highscorePanel.addEventListener('click', handleTripleClick);
+        }
+
+        /**
+         * 處理三擊事件
+         */
+        function handleTripleClick() {
+            // 增加點擊計數
+            tripleClickCount++;
+            
+            // 如果這是第一次點擊，設置計時器
+            if (tripleClickCount === 1) {
+                tripleClickTimer = setTimeout(() => {
+                    // 如果在指定時間內沒有達到三次點擊，重置計數
+                    tripleClickCount = 0;
+                }, 500); // 設置500毫秒的時間窗口
+            }
+            
+            // 如果達到三次點擊
+            if (tripleClickCount === 3) {
+                // 清除計時器
+                clearTimeout(tripleClickTimer);
+                // 重置計數
+                tripleClickCount = 0;
+                
+                // 觸發切換AI託管功能
+                toggleAutoPlay();
+                
+                // 添加視覺反饋
+                const highscorePanel = document.getElementById('highscore-panel');
+                highscorePanel.classList.add('highscore-triple-click');
+                
+                // 移除動畫類，以便下次可以再次觸發
+                setTimeout(() => {
+                    highscorePanel.classList.remove('highscore-triple-click');
+                }, 500);
+            }
+        }
+
+        // =================================================================
+        // 遊戲核心邏輯（保持不變）
         // =================================================================
 
         // 選擇遊戲等級並開始遊戲
         function selectLevel(mode) {
-            gameMode = mode; // 設置遊戲模式
-            const modeConfig = gameModes[mode]; // 獲取模式配置
+            gameMode = mode;
+            const modeConfig = gameModes[mode];
             
-            // 更新等級選擇按鈕的激活狀態
             document.querySelectorAll('.level-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
             event.currentTarget.classList.add('active');
             
-            // 設置下落速度和軟降速度
             dropInterval = modeConfig.baseSpeed;
             softDropInterval = modeConfig.softDropSpeed;
             
-            // 更新模式顯示
             document.getElementById('mode').innerText = modeConfig.name;
-            updateSpeedDisplay(); // 更新速度顯示
+            updateSpeedDisplay();
             
             // 選擇難度後直接開始遊戲
             startGame();
@@ -922,68 +1000,65 @@
 
         // 切換暫停狀態
         function togglePause() {
-            if (isGameOver) return; // 遊戲結束時不能暫停
+            if (isGameOver) return;
             
-            isPaused = !isPaused; // 切換暫停狀態
+            isPaused = !isPaused;
             const canvas = document.getElementById('tetris');
             const pauseStatus = document.getElementById('pause-status');
             
             if (isPaused) {
-                canvas.classList.add('paused'); // 添加暫停樣式
-                pauseStatus.innerHTML = '▶'; // 更新暫停狀態顯示
-                stopAutoPlay(); // 停止AI自動遊戲
+                canvas.classList.add('paused');
+                pauseStatus.innerHTML = '▶';
+                stopAutoPlay();
             } else {
-                canvas.classList.remove('paused'); // 移除暫停樣式
-                pauseStatus.innerHTML = '❚❚'; // 更新暫停狀態顯示
-                lastTime = performance.now(); // 重置時間戳
-                update(); // 繼續遊戲更新
+                canvas.classList.remove('paused');
+                pauseStatus.innerHTML = '❚❚';
+                lastTime = performance.now();
+                update();
                 if (isAutoPlay) {
-                    startAutoPlay(); // 如果啟用AI，重新開始AI自動遊戲
+                    startAutoPlay();
                 }
             }
         }
 
         // 切換電腦託管模式
         function toggleAutoPlay() {
-            if (isPaused || isGameOver) return; // 暫停或遊戲結束時不能切換
+            if (isPaused || isGameOver) return;
             
-            isAutoPlay = !isAutoPlay; // 切換AI自動遊戲狀態
+            isAutoPlay = !isAutoPlay;
             
             if (isAutoPlay) {
-                aiIndicator.classList.add('active'); // 顯示AI指示器
-                startAutoPlay(); // 開始AI自動遊戲
+                aiIndicator.classList.add('active');
+                startAutoPlay();
             } else {
-                aiIndicator.classList.remove('active'); // 隱藏AI指示器
-                stopAutoPlay(); // 停止AI自動遊戲
+                aiIndicator.classList.remove('active');
+                stopAutoPlay();
             }
         }
 
         // 開始電腦託管
         function startAutoPlay() {
-            if (!isAutoPlay || isPaused) return; // 如果未啟用AI或遊戲暫停，則返回
+            if (!isAutoPlay || isPaused) return;
             
-            stopAutoPlay(); // 先停止現有的AI計時器
-            lastAutoPlayTime = performance.now(); // 記錄當前時間
+            stopAutoPlay();
+            lastAutoPlayTime = performance.now();
             
-            // 設置AI自動遊戲計時器
             autoPlayTimer = setInterval(() => {
-                // 如果遊戲未暫停且有方塊且啟用AI
                 if (!isPaused && player.matrix && isAutoPlay) {
                     const currentTime = performance.now();
-                    // 檢查是否達到AI移動間隔
                     if (currentTime - lastAutoPlayTime > Math.max(100, dropInterval)) {
-                        autoPlayMove(); // 執行AI移動
-                        lastAutoPlayTime = currentTime; // 更新最後移動時間
+                        autoPlayMove();
+                        lastAutoPlayTime = currentTime;
                     }
                 }
-            }, 50); // 每50毫秒檢查一次
+            }, 50);
         }
 
         // 停止電腦託管
         function stopAutoPlay() {
             if (autoPlayTimer) {
-                clearInterval(autoPlayTimer); // 清除計時器
-                autoPlayTimer = null; // 重置計時器變量
+                clearInterval(autoPlayTimer);
+                autoPlayTimer = null;
             }
         }
 
@@ -991,82 +1066,73 @@
         function createMatrix(w, h) {
             const matrix = [];
             for (let i = 0; i < h; i++) {
-                matrix.push(new Array(w).fill(0)); // 創建一行並填充0
+                matrix.push(new Array(w).fill(0));
             }
             return matrix;
         }
 
         // 方塊形狀定義
         const pieceShapes = {
-            'I': [[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]], // I型方塊
-            'L': [[0,2,0],[0,2,0],[0,2,2]], // L型方塊
-            'J': [[0,3,0],[0,3,0],[3,3,0]], // J型方塊
-            'O': [[4,4],[4,4]], // O型方塊
-            'Z': [[5,5,0],[0,5,5],[0,0,0]], // Z型方塊
-            'S': [[0,6,6],[6,6,0],[0,0,0]], // S型方塊
-            'T': [[0,7,0],[7,7,7],[0,0,0]] // T型方塊
+            'I': [[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]],
+            'L': [[0,2,0],[0,2,0],[0,2,2]],
+            'J': [[0,3,0],[0,3,0],[3,3,0]],
+            'O': [[4,4],[4,4]],
+            'Z': [[5,5,0],[0,5,5],[0,0,0]],
+            'S': [[0,6,6],[6,6,0],[0,0,0]],
+            'T': [[0,7,0],[7,7,7],[0,0,0]]
         };
 
-        /**
-         * 創建指定類型的方塊
-         * @param {string} type - 方塊類型
-         * @returns {Array} 方塊矩陣
-         */
         function createPiece(type) {
-            return pieceShapes[type] || pieceShapes['T']; // 返回對應類型的方塊，默認為T型
+            return pieceShapes[type] || pieceShapes['T'];
         }
 
         // 初始化遊戲區域和玩家狀態
-        const arena = createMatrix(COLS, ROWS); // 創建遊戲區域矩陣
+        const arena = createMatrix(COLS, ROWS);
         const player = { 
-            pos: {x: 0, y: 0}, // 玩家方塊位置
-            matrix: null, // 玩家方塊矩陣
-            score: 0, // 玩家分數
-            next: null // 下一個方塊
+            pos: {x: 0, y: 0},
+            matrix: null,
+            score: 0,
+            next: null
         };
 
         // 繪製矩陣
         function drawMatrix(matrix, offset, ctx = context, isGhost = false) {
             for (let y = 0; y < matrix.length; y++) {
                 for (let x = 0; x < matrix[y].length; x++) {
-                    const value = matrix[y][x]; // 獲取單元格值
-                    if (value !== 0) { // 如果單元格有值（不是空）
+                    const value = matrix[y][x];
+                    if (value !== 0) {
                         if (isGhost) {
-                            // 繪製陰影方塊
-                            ctx.globalAlpha = 0.2; // 設置透明度
-                            ctx.fillStyle = '#ffffff'; // 設置顏色為白色
-                            ctx.fillRect(x + offset.x, y + offset.y, 1, 1); // 繪製矩形
-                            ctx.globalAlpha = 1.0; // 恢復透明度
+                            ctx.globalAlpha = 0.2;
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillRect(x + offset.x, y + offset.y, 1, 1);
+                            ctx.globalAlpha = 1.0;
                         } else {
-                            // 繪製正常方塊
-                            ctx.fillStyle = colors[value]; // 根據值設置顏色
-                            ctx.fillRect(x + offset.x, y + offset.y, 1, 1); // 繪製矩形
-                            ctx.strokeStyle = 'rgba(255,255,255,0.5)'; // 設置邊框顏色
-                            ctx.lineWidth = 0.05; // 設置邊框寬度
-                            ctx.strokeRect(x + offset.x, y + offset.y, 1, 1); // 繪製邊框
+                            ctx.fillStyle = colors[value];
+                            ctx.fillRect(x + offset.x, y + offset.y, 1, 1);
+                            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+                            ctx.lineWidth = 0.05;
+                            ctx.strokeRect(x + offset.x, y + offset.y, 1, 1);
                         }
                     }
                 }
             }
         }
 
-        // 計算陰影位置（方塊下落到底部的位置）
+        // 計算陰影位置
         function getGhostPosition() {
             const ghost = {
-                pos: { x: player.pos.x, y: player.pos.y }, // 複製玩家位置
-                matrix: player.matrix // 複製玩家方塊
+                pos: { x: player.pos.x, y: player.pos.y },
+                matrix: player.matrix
             };
-            // 一直向下移動直到碰撞
             while (!collide(arena, ghost)) {
                 ghost.pos.y++;
             }
-            ghost.pos.y--; // 回退一步（因為最後一步會碰撞）
-            return ghost.pos; // 返回陰影位置
+            ghost.pos.y--;
+            return ghost.pos;
         }
 
         // 繪製整個遊戲畫面
         function draw() {
-            // 清除畫布
             context.fillStyle = '#051025';
             context.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -1074,7 +1140,7 @@
             context.strokeStyle = '#1a3a60';
             context.lineWidth = 0.02;
             
-            // 繪製豎線
+            // 豎線
             for(let i = 0; i <= COLS; i++) {
                 context.beginPath();
                 context.moveTo(i, 0);
@@ -1082,7 +1148,7 @@
                 context.stroke();
             }
             
-            // 繪製橫線
+            // 橫線
             for(let i = 0; i <= ROWS; i++) {
                 context.beginPath();
                 context.moveTo(0, i);
@@ -1090,18 +1156,16 @@
                 context.stroke();
             }
 
-            // 繪製遊戲區域
             drawMatrix(arena, {x: 0, y: 0});
 
-            // 如果玩家有方塊，繪製陰影和方塊
             if (player.matrix) {
-                const ghostPos = getGhostPosition(); // 獲取陰影位置
-                drawMatrix(player.matrix, ghostPos, context, true); // 繪製陰影
-                drawMatrix(player.matrix, player.pos); // 繪製玩家方塊
+                const ghostPos = getGhostPosition();
+                drawMatrix(player.matrix, ghostPos, context, true);
+                drawMatrix(player.matrix, player.pos);
             }
         }
 
-        // 繪製下一個方塊預覽 - 修復版本
+        // 繪製下一個方塊預覽
         function drawNext() {
             // 清除預覽畫布
             nextContext.fillStyle = '#000';
@@ -1134,7 +1198,6 @@
             player.matrix.forEach((row, y) => {
                 row.forEach((value, x) => {
                     if (value !== 0) {
-                        // 將方塊值複製到遊戲區域對應位置
                         arena[y + player.pos.y][x + player.pos.x] = value;
                     }
                 });
@@ -1144,18 +1207,15 @@
         // 旋轉方塊矩陣
         function rotate(matrix, dir) {
             const n = matrix.length;
-            // 轉置矩陣
             for (let y = 0; y < n; y++) {
                 for (let x = 0; x < y; x++) {
-                    // 交換 matrix[x][y] 和 matrix[y][x]
                     [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
                 }
             }
-            // 根據方向反轉行或列
             if (dir > 0) {
-                matrix.forEach(row => row.reverse()); // 順時針旋轉：反轉每一行
+                matrix.forEach(row => row.reverse());
             } else {
-                matrix.reverse(); // 逆時針旋轉：反轉整個矩陣
+                matrix.reverse();
             }
         }
 
@@ -1165,37 +1225,29 @@
             const o = player.pos;
             for (let y = 0; y < m.length; y++) {
                 for (let x = 0; x < m[y].length; x++) {
-                    // 如果方塊單元格有值且對應的遊戲區域單元格有值（或超出邊界）
                     if (m[y][x] !== 0 && 
                         (arena[y + o.y] && arena[y + o.y][x + o.x]) !== 0) {
-                        return true; // 發生碰撞
+                        return true;
                     }
                 }
             }
-            return false; // 沒有碰撞
+            return false;
         }
 
         // 掃描並清除已填滿的行
         function arenaSweep() {
-            let rowCount = 1; // 連續消除行數倍數
-            let linesCleared = 0; // 本次消除的行數
-            
-            // 從底部向上掃描
+            let rowCount = 1;
+            let linesCleared = 0;
             outer: for (let y = arena.length - 1; y > 0; y--) {
-                // 檢查當前行是否已填滿
                 for (let x = 0; x < arena[y].length; x++) {
-                    if (arena[y][x] === 0) continue outer; // 如果有空格，跳過此行
+                    if (arena[y][x] === 0) continue outer;
                 }
-                
-                // 移除已填滿的行並在頂部添加新行
                 const row = arena.splice(y, 1)[0].fill(0);
                 arena.unshift(row);
-                y++; // 因為移除了一行，需要重新檢查同一位置
-                
-                // 更新分數（連續消除行數越多，分數越高）
+                y++;
                 player.score += rowCount * 10;
-                rowCount *= 2; // 倍數增加
-                linesCleared++; // 增加消除行數
+                rowCount *= 2;
+                linesCleared++;
             }
             
             // 更新消除行數統計
@@ -1204,78 +1256,74 @@
                 document.getElementById('lines').innerText = totalLinesCleared;
             }
             
-            updateScore(); // 更新分數顯示
+            updateScore();
         }
 
         // 更新分數和等級顯示
         function updateScore() {
-            document.getElementById('score').innerText = player.score; // 更新分數顯示
-            // 如果當前分數超過最高分，更新最高分
+            document.getElementById('score').innerText = player.score;
             if(player.score > highScore) {
                 highScore = player.score;
-                localStorage.setItem('tetris_highscore', highScore); // 保存到本地存儲
-                document.getElementById('highscore').innerText = highScore; // 更新最高分顯示
+                localStorage.setItem('tetris_highscore', highScore);
+                document.getElementById('highscore').innerText = highScore;
             }
         }
 
-        // 增加等級
+        // 增加等級的函數
         function increaseLevel() {
-            level++; // 等級增加
-            dropInterval = Math.max(50, 1000 - (level - 1) * 50); // 計算新的下落間隔
-            document.getElementById('level').innerText = level; // 更新等級顯示
-            updateSpeedDisplay(); // 更新速度顯示
+            level++;
+            dropInterval = Math.max(50, 1000 - (level - 1) * 50);
+            document.getElementById('level').innerText = level;
+            updateSpeedDisplay();
         }
 
-        // 減少等級
+        // 減少等級的函數
         function decreaseLevel() {
             if (level > 1) {
-                level--; // 等級減少
-                dropInterval = Math.max(50, 1000 - (level - 1) * 50); // 計算新的下落間隔
-                document.getElementById('level').innerText = level; // 更新等級顯示
-                updateSpeedDisplay(); // 更新速度顯示
+                level--;
+                dropInterval = Math.max(50, 1000 - (level - 1) * 50);
+                document.getElementById('level').innerText = level;
+                updateSpeedDisplay();
             }
         }
 
         // 直接下墜功能（硬降）
         function playerHardDrop() {
-            if (!player.matrix || isPaused) return; // 如果沒有方塊或遊戲暫停，則返回
+            if (!player.matrix || isPaused) return;
             
-            const ghostPos = getGhostPosition(); // 獲取陰影位置
-            player.pos.y = ghostPos.y; // 直接移動到陰影位置
-            merge(arena, player); // 合併到遊戲區域
-            playerReset(); // 重置玩家方塊
-            arenaSweep(); // 掃描並清除已填滿的行
-            dropCounter = 0; // 重置下落計數器
+            const ghostPos = getGhostPosition();
+            player.pos.y = ghostPos.y;
+            merge(arena, player);
+            playerReset();
+            arenaSweep();
+            dropCounter = 0;
         }
 
         // 重置玩家方塊（生成新方塊）
         function playerReset() {
-            // 如果沒有下一個方塊，生成一個
             if(player.next === null) {
                 player.next = createPiece(pieces[Math.floor(Math.random() * pieces.length)]);
             }
             
-            // 設置當前方塊為下一個方塊，並生成新的下一個方塊
             player.matrix = player.next;
             player.next = createPiece(pieces[Math.floor(Math.random() * pieces.length)]);
-            drawNext(); // 繪製下一個方塊預覽
+            drawNext();
             
-            // 設置初始位置（居中）
             player.pos.y = 0;
             player.pos.x = Math.floor(arena[0].length / 2) - Math.floor(player.matrix[0].length / 2);
 
             // 檢查新方塊是否立即發生碰撞（遊戲結束條件）
             if (collide(arena, player)) {
-                gameOver(); // 遊戲結束
+                gameOver();
             }
         }
 
         // 遊戲結束處理
         function gameOver() {
-            isGameOver = true; // 設置遊戲結束標誌
-            isPaused = true; // 暫停遊戲
-            stopAutoPlay(); // 停止AI自動遊戲
-            aiIndicator.classList.remove('active'); // 隱藏AI指示器
+            isGameOver = true;
+            isPaused = true;
+            stopAutoPlay();
+            aiIndicator.classList.remove('active');
             
             // 更新最終統計數據
             document.getElementById('final-score').innerText = player.score;
@@ -1293,7 +1341,7 @@
             
             // 重置遊戲狀態
             isGameOver = false;
-            arena.forEach(row => row.fill(0)); // 清空遊戲區域
+            arena.forEach(row => row.fill(0));
             player.score = 0;
             totalLinesCleared = 0;
             level = 1;
@@ -1319,11 +1367,11 @@
             
             // 重置遊戲狀態
             isGameOver = false;
-            arena.forEach(row => row.fill(0)); // 清空遊戲區域
+            arena.forEach(row => row.fill(0));
             player.score = 0;
             totalLinesCleared = 0;
             level = 1;
-            dropInterval = gameModes[gameMode].baseSpeed; // 重置下落速度
+            dropInterval = gameModes[gameMode].baseSpeed;
             
             // 更新顯示
             document.getElementById('score').innerText = player.score;
@@ -1344,55 +1392,51 @@
 
         // 玩家方塊下落一格（正常下落）
         function playerDrop() {
-            player.pos.y++; // 向下移動一格
+            player.pos.y++;
             if (collide(arena, player)) {
-                // 如果發生碰撞，回退一步
                 player.pos.y--;
-                merge(arena, player); // 合併到遊戲區域
-                playerReset(); // 重置玩家方塊
-                arenaSweep(); // 掃描並清除已填滿的行
+                merge(arena, player);
+                playerReset();
+                arenaSweep();
             }
-            dropCounter = 0; // 重置下落計數器
+            dropCounter = 0;
         }
 
         // 玩家方塊加速下落（軟降）
         function playerSoftDrop() {
-            if (!player.matrix || isPaused) return; // 如果沒有方塊或遊戲暫停，則返回
+            if (!player.matrix || isPaused) return;
             
-            player.pos.y++; // 向下移動一格
+            player.pos.y++;
             if (collide(arena, player)) {
-                // 如果發生碰撞，回退一步
                 player.pos.y--;
-                merge(arena, player); // 合併到遊戲區域
-                playerReset(); // 重置玩家方塊
-                arenaSweep(); // 掃描並清除已填滿的行
-                isSoftDropping = false; // 停止軟降
+                merge(arena, player);
+                playerReset();
+                arenaSweep();
+                isSoftDropping = false;
             }
-            player.score += 1; // 軟降加分
-            updateScore(); // 更新分數顯示
+            player.score += 1;
+            updateScore();
         }
 
         // 玩家方塊水平移動
         function playerMove(offset) {
-            player.pos.x += offset; // 移動方塊
+            player.pos.x += offset;
             if (collide(arena, player)) {
-                player.pos.x -= offset; // 如果發生碰撞，回退
+                player.pos.x -= offset;
             }
         }
 
         // 玩家方塊旋轉
         function playerRotate(dir) {
-            const pos = player.pos.x; // 保存原始位置
-            let offset = 1; // 初始偏移量
-            rotate(player.matrix, dir); // 旋轉方塊
-            // 如果旋轉後發生碰撞，嘗試左右移動來避免碰撞
+            const pos = player.pos.x;
+            let offset = 1;
+            rotate(player.matrix, dir);
             while (collide(arena, player)) {
-                player.pos.x += offset; // 嘗試移動
-                offset = -(offset + (offset > 0 ? 1 : -1)); // 改變方向並增加距離
-                // 如果偏移量超過方塊寬度，恢復原始狀態並退出
+                player.pos.x += offset;
+                offset = -(offset + (offset > 0 ? 1 : -1));
                 if (offset > player.matrix[0].length) {
-                    rotate(player.matrix, -dir); // 恢復旋轉
-                    player.pos.x = pos; // 恢復位置
+                    rotate(player.matrix, -dir);
+                    player.pos.x = pos;
                     return;
                 }
             }
@@ -1400,91 +1444,82 @@
 
         // 遊戲主更新循環
         function update(time = 0) {
-            if(isPaused) return; // 如果遊戲暫停，不更新
+            if(isPaused) return;
             
-            const deltaTime = time - lastTime; // 計算時間差
-            lastTime = time; // 更新最後時間
+            const deltaTime = time - lastTime;
+            lastTime = time;
             
-            dropCounter += deltaTime; // 增加下落計數器
+            dropCounter += deltaTime;
             
-            // 根據是否軟降來決定下落邏輯
             if (isSoftDropping) {
-                // 軟降：更快的下落速度
                 if (dropCounter > softDropInterval) {
                     playerSoftDrop();
                     dropCounter = 0;
                 }
             } else {
-                // 正常下落
                 if (dropCounter > dropInterval) {
                     playerDrop();
                     dropCounter = 0;
                 }
             }
             
-            draw(); // 繪製遊戲畫面
-            requestAnimationFrame(update); // 請求下一幀更新
+            draw();
+            requestAnimationFrame(update);
         }
 
         // 開始遊戲
         function startGame() {
-            document.getElementById('overlay').style.display = 'none'; // 隱藏開始菜單
+            document.getElementById('overlay').style.display = 'none';
             if(isGameOver) { 
-                isGameOver = false; // 重置遊戲結束標誌
-                playerReset(); // 重置玩家方塊
+                isGameOver = false; 
+                playerReset(); 
             }
             if(player.matrix === null) {
-                playerReset(); // 如果沒有方塊，重置玩家方塊
+                playerReset();
             }
             
-            isPaused = false; // 取消暫停
-            update(); // 開始遊戲更新循環
+            isPaused = false;
+            update();
         }
 
         // === 控制輸入 ===
         
         // 鍵盤控制事件監聽
         document.addEventListener('keydown', event => {
-            if(isPaused) return; // 如果遊戲暫停，不處理按鍵
+            if(isPaused) return;
             
-            // 根據按鍵代碼執行相應操作
-            if (event.keyCode === 37) playerMove(-1); // 左箭頭：向左移動
-            else if (event.keyCode === 39) playerMove(1); // 右箭頭：向右移動
+            if (event.keyCode === 37) playerMove(-1);
+            else if (event.keyCode === 39) playerMove(1);
             else if (event.keyCode === 40) {
-                // 下箭頭：開始軟降
                 isSoftDropping = true;
-                dropCounter = softDropInterval; // 立即觸發一次軟降
-                event.preventDefault(); // 防止默認行為（滾動頁面）
+                dropCounter = softDropInterval;
+                event.preventDefault();
             }
-            else if (event.keyCode === 81 || event.keyCode === 38) playerRotate(1); // Q鍵或上箭頭：旋轉
+            else if (event.keyCode === 81 || event.keyCode === 38) playerRotate(1);
             else if (event.keyCode === 107 || event.key === '+' || event.keyCode === 187) {
-                // 加號鍵：增加等級
                 increaseLevel();
-                event.preventDefault(); // 防止默認行為
+                event.preventDefault();
             }
             else if (event.keyCode === 109 || event.key === '-' || event.keyCode === 189) {
-                // 減號鍵：減少等級
                 decreaseLevel();
-                event.preventDefault(); // 防止默認行為
+                event.preventDefault();
             }
             else if (event.keyCode === 32) {
-                // 空格鍵：硬降
                 playerHardDrop();
-                event.preventDefault(); // 防止默認行為
+                event.preventDefault();
             }
-            else if (event.keyCode === 80) { // P鍵：暫停/繼續
+            else if (event.keyCode === 80) { // P鍵暫停
                 togglePause();
-                event.preventDefault(); // 防止默認行為
+                event.preventDefault();
             }
-            else if (event.keyCode === 67) { // C鍵：切換AI託管
+            else if (event.keyCode === 67) { // C鍵切換AI託管
                 toggleAutoPlay();
-                event.preventDefault(); // 防止默認行為
+                event.preventDefault();
             }
         });
 
         // 鍵盤釋放事件監聽
         document.addEventListener('keyup', event => {
-            // 下箭鍵釋放：停止軟降
             if (event.keyCode === 40) {
                 isSoftDropping = false;
                 dropCounter = 0;
@@ -1493,41 +1528,35 @@
 
         // 設置觸控按鈕
         function setupBtn(id, action, isRepeatable = false) {
-            const btn = document.getElementById(id); // 獲取按鈕元素
-            let timer = null; // 重複計時器
+            const btn = document.getElementById(id);
+            let timer = null;
 
-            // 開始動作（按下按鈕）
             const startAction = (e) => {
-                e.preventDefault(); // 防止默認行為
-                if(isPaused) return; // 如果遊戲暫停，不執行動作
+                e.preventDefault();
+                if(isPaused) return;
                 
-                btn.classList.add('active'); // 添加激活樣式
-                action(); // 執行動作
+                btn.classList.add('active');
+                action();
 
-                // 如果是可重複觸發的按鈕，設置計時器
                 if (isRepeatable) {
                     timer = setInterval(() => {
-                        action(); // 重複執行動作
-                    }, softDropInterval); // 使用軟降間隔
+                        action();
+                    }, softDropInterval);
                 }
             };
 
-            // 結束動作（釋放按鈕）
             const endAction = (e) => {
-                e.preventDefault(); // 防止默認行為
-                btn.classList.remove('active'); // 移除激活樣式
-                // 清除重複計時器
+                e.preventDefault();
+                btn.classList.remove('active');
                 if (timer) {
                     clearInterval(timer);
                     timer = null;
                 }
-                // 如果是下落按鈕，停止軟降
                 if (id === 'btn-down') {
                     isSoftDropping = false;
                 }
             };
 
-            // 綁定事件監聽器
             btn.addEventListener('touchstart', startAction, {passive: false});
             btn.addEventListener('touchend', endAction);
             btn.addEventListener('mousedown', startAction);
@@ -1536,35 +1565,25 @@
         }
 
         // 設置各個控制按鈕
-        setupBtn('btn-left', () => playerMove(-1)); // 左移按鈕
-        setupBtn('btn-right', () => playerMove(1)); // 右移按鈕
+        setupBtn('btn-left', () => playerMove(-1));
+        setupBtn('btn-right', () => playerMove(1));
         setupBtn('btn-down', () => { 
-            // 下落按鈕（可重複觸發）
             isSoftDropping = true;
             playerSoftDrop();
         }, true);
-        setupBtn('btn-rotate', () => playerRotate(1)); // 旋轉按鈕
-        setupBtn('btn-hard-drop', () => playerHardDrop()); // 硬降按鈕
+        setupBtn('btn-rotate', () => playerRotate(1));
+        setupBtn('btn-hard-drop', () => playerHardDrop());
 
         // 初始化畫布大小
         resizeCanvas();
-        window.addEventListener('resize', resizeCanvas); // 窗口大小變化時重新調整畫布
-
-        // 計算消除的行數
-        function countLinesCleared(testArena) {
-            let lines = 0; // 初始化行數計數
-            for (let y = 0; y < ROWS; y++) {
-                // 檢查當前行是否全部填滿
-                if (testArena[y].every(cell => cell !== 0)) {
-                    lines++; // 增加行數計數
-                }
-            }
-            return lines; // 返回消除的行數
-        }
+        window.addEventListener('resize', resizeCanvas);
 
         // 初始化：生成第一個下一個方塊並繪製
         player.next = createPiece(pieces[Math.floor(Math.random() * pieces.length)]);
         drawNext();
+        
+        // 初始化三擊功能
+        initTripleClickFeature();
     </script>
 </body>
 </html>
