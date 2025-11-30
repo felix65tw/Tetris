@@ -418,6 +418,32 @@
             100% { transform: translate(var(--tx), var(--ty)); opacity: 0; }
         }
 
+        .confetti {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            pointer-events: none;
+            animation: confettiFall 5s linear forwards;
+            top: -20px;
+        }
+
+        @keyframes confettiFall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
+
+        .flashing-text {
+            animation: flash 0.5s infinite alternate;
+        }
+
+        @keyframes flash {
+            0% { color: #ffd700; text-shadow: 0 0 10px #ffd700; }
+            25% { color: #ff6b6b; text-shadow: 0 0 10px #ff6b6b; }
+            50% { color: #4ecdc4; text-shadow: 0 0 10px #4ecdc4; }
+            75% { color: #ff9ff3; text-shadow: 0 0 10px #ff9ff3; }
+            100% { color: #feca57; text-shadow: 0 0 10px #feca57; }
+        }
+
         @media (max-width: 767px) {
             #game-container {
                 transform: scale(0.85);
@@ -564,8 +590,8 @@
         
         <!-- 新增通關畫面 -->
         <div id="completion-overlay">
-            <h1 id="completion-title">恭喜通關！</h1>
-            <div id="completion-subtitle">您已達到最高等級！<br>按 E 鍵切換慶祝效果</div>
+            <h1 id="completion-title" class="flashing-text">恭喜通關！</h1>
+            <div id="completion-subtitle">您已達到最高等級！<br>按 E 鍵可隨時測試此畫面</div>
             <div id="final-stats">
                 <div class="stat-item">最終分數: <span id="completion-score" class="stat-value">0</span></div>
                 <div class="stat-item">消除行數: <span id="completion-lines" class="stat-value">0</span></div>
@@ -638,6 +664,7 @@
                 try {
                     this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
                     
+                    // 創建遊戲音效
                     this.sounds.lineClear = this.createChordSound([523.25, 659.25, 783.99], 0.3);
                     this.sounds.gameOver = this.createChordSound([220, 277.18, 329.63], 0.8);
                     this.sounds.land = this.createTone(200, 0.1);
@@ -703,12 +730,22 @@
                 this.sounds[soundName]();
             }
             
-            // 通關慶祝音效 - 七個音的和弦循環
+            // 通關慶祝音效 - 豐富多彩的音效組合
             startCompletionSound() {
                 if (!this.initialized || this.isCompletionSoundPlaying) return;
                 
                 this.isCompletionSoundPlaying = true;
-                const notes = [329.63, 349.23, 392.00, 440.00, 493.88, 523.25, 587.33]; // E, F, G, A, B, C, D
+                
+                // 多種音階組合
+                const scales = [
+                    [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25], // C大調
+                    [277.18, 311.13, 349.23, 369.99, 415.30, 466.16, 523.25, 554.37], // C#大調
+                    [293.66, 329.63, 369.99, 392.00, 440.00, 493.88, 554.37, 587.33], // D大調
+                    [311.13, 349.23, 392.00, 415.30, 466.16, 523.25, 587.33, 622.25], // D#大調
+                    [329.63, 369.99, 415.30, 440.00, 493.88, 554.37, 622.25, 659.25]  // E大調
+                ];
+                
+                let scaleIndex = 0;
                 let noteIndex = 0;
                 
                 if (this.audioContext.state === 'suspended') {
@@ -716,12 +753,23 @@
                 }
                 
                 this.completionSoundInterval = setInterval(() => {
-                    const frequencies = [
-                        notes[noteIndex],
-                        notes[(noteIndex + 2) % notes.length],
-                        notes[(noteIndex + 4) % notes.length]
-                    ];
+                    const currentScale = scales[scaleIndex];
                     
+                    // 每次播放3-5個音符的和弦
+                    const chordSize = Math.floor(Math.random() * 3) + 3;
+                    const frequencies = [];
+                    
+                    for (let i = 0; i < chordSize; i++) {
+                        const note = currentScale[(noteIndex + i * 2) % currentScale.length];
+                        frequencies.push(note);
+                    }
+                    
+                    // 添加一些隨機音符增加豐富度
+                    if (Math.random() > 0.5) {
+                        frequencies.push(currentScale[Math.floor(Math.random() * currentScale.length)]);
+                    }
+                    
+                    // 播放和弦
                     frequencies.forEach(freq => {
                         const oscillator = this.audioContext.createOscillator();
                         const gainNode = this.audioContext.createGain();
@@ -730,17 +778,48 @@
                         gainNode.connect(this.audioContext.destination);
                         
                         oscillator.frequency.value = freq;
-                        oscillator.type = 'sine';
                         
-                        gainNode.gain.setValueAtTime(0.15, this.audioContext.currentTime);
-                        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.5);
+                        // 隨機選擇振盪器類型增加多樣性
+                        const types = ['sine', 'square', 'sawtooth', 'triangle'];
+                        oscillator.type = types[Math.floor(Math.random() * types.length)];
+                        
+                        const volume = 0.1 + Math.random() * 0.1;
+                        const duration = 0.3 + Math.random() * 0.3;
+                        
+                        gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
                         
                         oscillator.start(this.audioContext.currentTime);
-                        oscillator.stop(this.audioContext.currentTime + 0.5);
+                        oscillator.stop(this.audioContext.currentTime + duration);
                     });
                     
-                    noteIndex = (noteIndex + 1) % notes.length;
-                }, 300);
+                    // 偶爾添加一些特殊效果音
+                    if (Math.random() > 0.7) {
+                        const effectOscillator = this.audioContext.createOscillator();
+                        const effectGain = this.audioContext.createGain();
+                        
+                        effectOscillator.connect(effectGain);
+                        effectGain.connect(this.audioContext.destination);
+                        
+                        effectOscillator.frequency.setValueAtTime(100, this.audioContext.currentTime);
+                        effectOscillator.frequency.exponentialRampToValueAtTime(1000, this.audioContext.currentTime + 0.2);
+                        
+                        effectOscillator.type = 'sawtooth';
+                        
+                        effectGain.gain.setValueAtTime(0.05, this.audioContext.currentTime);
+                        effectGain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);
+                        
+                        effectOscillator.start(this.audioContext.currentTime);
+                        effectOscillator.stop(this.audioContext.currentTime + 0.3);
+                    }
+                    
+                    noteIndex = (noteIndex + 1) % currentScale.length;
+                    
+                    // 每5個音符切換一次音階
+                    if (noteIndex === 0) {
+                        scaleIndex = (scaleIndex + 1) % scales.length;
+                    }
+                }, 200); // 更快的節奏
             }
             
             stopCompletionSound() {
@@ -749,14 +828,6 @@
                     this.completionSoundInterval = null;
                 }
                 this.isCompletionSoundPlaying = false;
-            }
-            
-            toggleCompletionSound() {
-                if (this.isCompletionSoundPlaying) {
-                    this.stopCompletionSound();
-                } else {
-                    this.startCompletionSound();
-                }
             }
         }
 
@@ -816,8 +887,8 @@
         let isSpecialPauseEnabled = false;
         let isSpecialPiecePaused = false;
         let isGameCompleted = false;
-        let isCompletionEffectEnabled = true;
         let fireworkInterval = null;
+        let confettiInterval = null;
 
         let tripleClickCount = 0;
         let tripleClickTimer = null;
@@ -1842,18 +1913,19 @@
             document.getElementById('completion-overlay').style.display = 'flex';
             
             // 啟動慶祝效果
-            if (isCompletionEffectEnabled) {
-                startCompletionEffects();
-            }
+            startCompletionEffects();
         }
 
-        // 啟動慶祝效果（煙火和音效）
+        // 啟動慶祝效果（煙火、彩帶和音效）
         function startCompletionEffects() {
             // 啟動音效
             soundManager.startCompletionSound();
             
             // 啟動煙火效果
-            fireworkInterval = setInterval(createFirework, 500);
+            fireworkInterval = setInterval(createFirework, 200);
+            
+            // 啟動彩帶效果
+            confettiInterval = setInterval(createConfetti, 100);
         }
 
         // 停止慶祝效果
@@ -1866,53 +1938,96 @@
                 clearInterval(fireworkInterval);
                 fireworkInterval = null;
             }
-        }
-
-        // 切換慶祝效果
-        function toggleCompletionEffects() {
-            isCompletionEffectEnabled = !isCompletionEffectEnabled;
             
-            if (isCompletionEffectEnabled) {
-                startCompletionEffects();
-            } else {
-                stopCompletionEffects();
+            // 停止彩帶效果
+            if (confettiInterval) {
+                clearInterval(confettiInterval);
+                confettiInterval = null;
             }
         }
 
         // 創建煙火效果
         function createFirework() {
             const container = document.getElementById('completion-overlay');
-            const firework = document.createElement('div');
-            firework.className = 'firework';
             
-            // 隨機顏色
-            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffffff'];
-            const color = colors[Math.floor(Math.random() * colors.length)];
-            firework.style.backgroundColor = color;
-            firework.style.boxShadow = `0 0 10px ${color}`;
+            // 一次創建多個煙火
+            for (let i = 0; i < 3; i++) {
+                const firework = document.createElement('div');
+                firework.className = 'firework';
+                
+                // 隨機顏色
+                const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffffff'];
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                firework.style.backgroundColor = color;
+                firework.style.boxShadow = `0 0 10px ${color}`;
+                
+                // 隨機位置
+                const startX = Math.random() * 80 + 10; // 10% 到 90%
+                const startY = 100; // 從底部開始
+                firework.style.left = `${startX}%`;
+                firework.style.top = `${startY}%`;
+                
+                // 隨機目標位置
+                const targetX = (Math.random() - 0.5) * 150;
+                const targetY = -Math.random() * 100 - 10;
+                
+                // 設置CSS變量
+                firework.style.setProperty('--tx', `${targetX}px`);
+                firework.style.setProperty('--ty', `${targetY}px`);
+                
+                container.appendChild(firework);
+                
+                // 動畫結束後移除元素
+                setTimeout(() => {
+                    if (firework.parentNode) {
+                        firework.parentNode.removeChild(firework);
+                    }
+                }, 1500);
+            }
+        }
+
+        // 創建彩帶效果 - 修復彩帶卡住的問題
+        function createConfetti() {
+            const container = document.getElementById('completion-overlay');
             
-            // 隨機位置
-            const startX = Math.random() * 80 + 10; // 10% 到 90%
-            const startY = 100; // 從底部開始
-            firework.style.left = `${startX}%`;
-            firework.style.top = `${startY}%`;
-            
-            // 隨機目標位置
-            const targetX = (Math.random() - 0.5) * 100;
-            const targetY = -Math.random() * 80 - 10;
-            
-            // 設置CSS變量
-            firework.style.setProperty('--tx', `${targetX}px`);
-            firework.style.setProperty('--ty', `${targetY}px`);
-            
-            container.appendChild(firework);
-            
-            // 動畫結束後移除元素
-            setTimeout(() => {
-                if (firework.parentNode) {
-                    firework.parentNode.removeChild(firework);
+            // 一次創建多個彩帶
+            for (let i = 0; i < 5; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                
+                // 隨機顏色
+                const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffffff'];
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.backgroundColor = color;
+                
+                // 隨機形狀
+                const shapes = ['square', 'circle', 'triangle'];
+                const shape = shapes[Math.floor(Math.random() * shapes.length)];
+                
+                if (shape === 'circle') {
+                    confetti.style.borderRadius = '50%';
+                } else if (shape === 'triangle') {
+                    confetti.style.width = '0';
+                    confetti.style.height = '0';
+                    confetti.style.backgroundColor = 'transparent';
+                    confetti.style.borderLeft = '8px solid transparent';
+                    confetti.style.borderRight = '8px solid transparent';
+                    confetti.style.borderBottom = `15px solid ${color}`;
                 }
-            }, 1500);
+                
+                // 隨機位置
+                const startX = Math.random() * 100;
+                confetti.style.left = `${startX}%`;
+                
+                container.appendChild(confetti);
+                
+                // 動畫結束後移除元素
+                setTimeout(() => {
+                    if (confetti.parentNode) {
+                        confetti.parentNode.removeChild(confetti);
+                    }
+                }, 5000);
+            }
         }
 
         // 返回主菜單
@@ -2119,13 +2234,10 @@
         
         // 鍵盤控制事件監聽
         document.addEventListener('keydown', event => {
-            // E鍵處理：無論何時，E鍵用於觸發通關或切換慶祝效果
+            // E鍵處理：無論何時，E鍵用於觸發通關
             if (event.keyCode === 69) { // E鍵
-                if (isGameCompleted) {
-                    // 如果已經在通關狀態，則切換慶祝效果
-                    toggleCompletionEffects();
-                } else {
-                    // 否則，觸發通關
+                if (!isGameCompleted) {
+                    // 觸發通關
                     gameCompleted();
                 }
                 event.preventDefault();
