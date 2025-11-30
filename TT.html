@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>俄羅斯方塊 - 智能AI版</title>
     <style>
-        /* 樣式部分保持不變 */
         :root {
             --bg-color: #051025;
             --panel-bg: rgba(0, 30, 70, 0.8);
@@ -45,11 +44,6 @@
             background-color: rgba(0, 0, 0, 0.8);
             box-shadow: 0 0 15px rgba(37, 107, 168, 0.5);
             display: block;
-            transition: filter 0.3s ease;
-        }
-
-        canvas#tetris.paused {
-            filter: blur(5px) brightness(0.7);
         }
 
         #sidebar {
@@ -332,7 +326,6 @@
             border-color: #4dc9cf;
         }
 
-        /* 最高分面板三擊特效 */
         .panel-box.highscore-triple-click {
             animation: tripleClickEffect 0.5s;
         }
@@ -345,7 +338,86 @@
             100% { background-color: rgba(0, 30, 70, 0.8); }
         }
 
-        /* 移動端適配 */
+        .line-clearing {
+            animation: lineClear 0.5s ease-out;
+        }
+
+        @keyframes lineClear {
+            0% { background-color: rgba(255, 255, 255, 0.8); }
+            50% { background-color: rgba(255, 255, 255, 0.2); }
+            100% { background-color: transparent; }
+        }
+
+        /* 暫停文字閃爍效果 */
+        @keyframes pauseBlink {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+
+        .pause-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: #4dc9cf;
+            text-shadow: 0 0 10px #1a9ba0;
+            z-index: 10;
+            animation: pauseBlink 1.5s infinite;
+            display: none;
+        }
+
+        /* 通關畫面 */
+        #completion-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+        }
+
+        #completion-title {
+            font-size: 60px;
+            color: #ffd700;
+            text-shadow: 0 0 20px #ffd700, 0 0 30px #ffd700;
+            margin-bottom: 20px;
+            animation: completionPulse 2s infinite;
+        }
+
+        @keyframes completionPulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.9; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        #completion-subtitle {
+            font-size: 24px;
+            color: #4dc9cf;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .firework {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: fireworkExplode 1.5s forwards;
+        }
+
+        @keyframes fireworkExplode {
+            0% { transform: translate(0, 0); opacity: 1; }
+            100% { transform: translate(var(--tx), var(--ty)); opacity: 0; }
+        }
+
         @media (max-width: 767px) {
             #game-container {
                 transform: scale(0.85);
@@ -360,7 +432,7 @@
                 gap: 2px;
             }
             
-            #overlay, #game-over-overlay {
+            #overlay, #game-over-overlay, #completion-overlay {
                 transform: scale(0.85);
                 transform-origin: center center;
             }
@@ -394,11 +466,22 @@
                 width: 60px !important;
                 height: 60px !important;
             }
+
+            .pause-text {
+                font-size: 36px;
+            }
+            
+            #completion-title {
+                font-size: 40px;
+            }
+            
+            #completion-subtitle {
+                font-size: 18px;
+            }
         }
 
-        /* 桌面端樣式 */
         @media (min-width: 768px) {
-            #game-container, #controls, #overlay, #game-over-overlay, #ai-indicator {
+            #game-container, #controls, #overlay, #game-over-overlay, #ai-indicator, #completion-overlay {
                 transform: scale(1) !important;
             }
             
@@ -416,23 +499,26 @@
 </head>
 <body>
     <div id="ai-indicator">AI 託管中</div>
+    
+    <!-- 暫停文字 -->
+    <div class="pause-text" id="pause-text">PAUSE</div>
 
     <div id="game-container">
         <canvas id="tetris" width="240" height="400"></canvas>
 
         <div id="sidebar">
+            <!-- 重新排列的順序 -->
             <div class="panel-box">
                 <div class="panel-label">Next</div>
                 <canvas id="next-piece-canvas" width="60" height="60"></canvas>
             </div>
-            <!-- 最高分數面板 - 添加三擊功能 -->
             <div class="panel-box" id="highscore-panel">
                 <div class="panel-label">Highscore</div>
                 <div id="highscore" class="panel-value">0</div>
             </div>
             <div class="panel-box">
-                <div class="panel-label">Lines</div>
-                <div id="lines" class="panel-value">0</div>
+                <div class="panel-label">Mode</div>
+                <div id="mode" class="panel-value">簡易</div>
             </div>
             <div class="panel-box">
                 <div class="panel-label">Score</div>
@@ -443,25 +529,47 @@
                 <div id="level" class="panel-value">1</div>
             </div>
             <div class="panel-box">
-                <div class="panel-label">Speed</div>
-                <div id="speed" class="panel-value">1000ms</div>
+                <div class="panel-label">Lines</div>
+                <div id="lines" class="panel-value">0</div>
             </div>
             <div class="panel-box">
-                <div class="panel-label">Mode</div>
-                <div id="mode" class="panel-value">入門</div>
+                <div class="panel-label">Speed</div>
+                <div id="speed" class="panel-value">700ms</div>
+            </div>
+            <div class="panel-box">
+                <div class="panel-label">Pieces</div>
+                <div id="pieces-count" class="panel-value">0</div>
             </div>
             <div class="panel-box clickable" onclick="togglePause()">
                 <div class="panel-label">Pause</div>
                 <div id="pause-status" class="panel-value">❚❚</div>
+            </div>
+            <div class="panel-box">
+                <div class="panel-label">Special Pause</div>
+                <div id="special-pause-status" class="panel-value">OFF</div>
             </div>
         </div>
         
         <div id="game-over-overlay">
             <h1 id="game-over-title">GAME OVER</h1>
             <div id="final-stats">
+                <!-- 修改遊戲結束統計，移除最高分和特殊方塊數 -->
                 <div class="stat-item">最終分數: <span id="final-score" class="stat-value">0</span></div>
                 <div class="stat-item">消除行數: <span id="final-lines" class="stat-value">0</span></div>
-                <div class="stat-item">最高分數: <span id="final-highscore" class="stat-value">0</span></div>
+                <div class="stat-item">方塊數量: <span id="final-pieces" class="stat-value">0</span></div>
+            </div>
+            <button id="restart-btn" onclick="restartGame()">重新開始</button>
+            <button id="back-to-menu-btn" onclick="backToMenu()">返回主菜單</button>
+        </div>
+        
+        <!-- 新增通關畫面 -->
+        <div id="completion-overlay">
+            <h1 id="completion-title">恭喜通關！</h1>
+            <div id="completion-subtitle">您已達到最高等級！<br>按 E 鍵切換慶祝效果</div>
+            <div id="final-stats">
+                <div class="stat-item">最終分數: <span id="completion-score" class="stat-value">0</span></div>
+                <div class="stat-item">消除行數: <span id="completion-lines" class="stat-value">0</span></div>
+                <div class="stat-item">方塊數量: <span id="completion-pieces" class="stat-value">0</span></div>
             </div>
             <button id="restart-btn" onclick="restartGame()">重新開始</button>
             <button id="back-to-menu-btn" onclick="backToMenu()">返回主菜單</button>
@@ -490,11 +598,11 @@
         <h1 id="start-title">TETRIS</h1>
         
         <div id="level-selection">
-            <div class="level-btn active" onclick="selectLevel('beginner')">
+            <div class="level-btn" onclick="selectLevel('beginner')">
                 入門模式 - 輕鬆體驗
                 <div class="level-desc">• 下落速度：1000ms<br>• 適合完全新手</div>
             </div>
-            <div class="level-btn" onclick="selectLevel('easy')">
+            <div class="level-btn active" onclick="selectLevel('easy')">
                 簡易模式 - 基礎挑戰
                 <div class="level-desc">• 下落速度：700ms<br>• 適合初學者</div>
             </div>
@@ -514,34 +622,167 @@
     </div>
 
     <script>
-        // 獲取主要遊戲畫布和其 2D 繪圖上下文
+        // 音效管理器
+        class SoundManager {
+            constructor() {
+                this.audioContext = null;
+                this.sounds = {};
+                this.initialized = false;
+                this.completionSoundInterval = null;
+                this.isCompletionSoundPlaying = false;
+            }
+            
+            init() {
+                if (this.initialized) return;
+                
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    
+                    this.sounds.lineClear = this.createChordSound([523.25, 659.25, 783.99], 0.3);
+                    this.sounds.gameOver = this.createChordSound([220, 277.18, 329.63], 0.8);
+                    this.sounds.land = this.createTone(200, 0.1);
+                    this.sounds.specialPiece = this.createChordSound([659.25, 830.61, 1046.50], 0.5);
+                    
+                    this.initialized = true;
+                } catch (e) {
+                    console.warn('音頻初始化失敗:', e);
+                }
+            }
+            
+            createTone(frequency, duration) {
+                return () => {
+                    if (!this.audioContext) return;
+                    
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.audioContext.destination);
+                    
+                    oscillator.frequency.value = frequency;
+                    oscillator.type = 'sine';
+                    
+                    gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+                    
+                    oscillator.start(this.audioContext.currentTime);
+                    oscillator.stop(this.audioContext.currentTime + duration);
+                };
+            }
+            
+            createChordSound(frequencies, duration) {
+                return () => {
+                    if (!this.audioContext) return;
+                    
+                    frequencies.forEach(freq => {
+                        const oscillator = this.audioContext.createOscillator();
+                        const gainNode = this.audioContext.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(this.audioContext.destination);
+                        
+                        oscillator.frequency.value = freq;
+                        oscillator.type = 'triangle';
+                        
+                        gainNode.gain.setValueAtTime(0.2, this.audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+                        
+                        oscillator.start(this.audioContext.currentTime);
+                        oscillator.stop(this.audioContext.currentTime + duration);
+                    });
+                };
+            }
+            
+            play(soundName) {
+                if (!this.initialized || !this.sounds[soundName]) return;
+                
+                if (this.audioContext.state === 'suspended') {
+                    this.audioContext.resume();
+                }
+                
+                this.sounds[soundName]();
+            }
+            
+            // 通關慶祝音效 - 七個音的和弦循環
+            startCompletionSound() {
+                if (!this.initialized || this.isCompletionSoundPlaying) return;
+                
+                this.isCompletionSoundPlaying = true;
+                const notes = [329.63, 349.23, 392.00, 440.00, 493.88, 523.25, 587.33]; // E, F, G, A, B, C, D
+                let noteIndex = 0;
+                
+                if (this.audioContext.state === 'suspended') {
+                    this.audioContext.resume();
+                }
+                
+                this.completionSoundInterval = setInterval(() => {
+                    const frequencies = [
+                        notes[noteIndex],
+                        notes[(noteIndex + 2) % notes.length],
+                        notes[(noteIndex + 4) % notes.length]
+                    ];
+                    
+                    frequencies.forEach(freq => {
+                        const oscillator = this.audioContext.createOscillator();
+                        const gainNode = this.audioContext.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(this.audioContext.destination);
+                        
+                        oscillator.frequency.value = freq;
+                        oscillator.type = 'sine';
+                        
+                        gainNode.gain.setValueAtTime(0.15, this.audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.5);
+                        
+                        oscillator.start(this.audioContext.currentTime);
+                        oscillator.stop(this.audioContext.currentTime + 0.5);
+                    });
+                    
+                    noteIndex = (noteIndex + 1) % notes.length;
+                }, 300);
+            }
+            
+            stopCompletionSound() {
+                if (this.completionSoundInterval) {
+                    clearInterval(this.completionSoundInterval);
+                    this.completionSoundInterval = null;
+                }
+                this.isCompletionSoundPlaying = false;
+            }
+            
+            toggleCompletionSound() {
+                if (this.isCompletionSoundPlaying) {
+                    this.stopCompletionSound();
+                } else {
+                    this.startCompletionSound();
+                }
+            }
+        }
+
+        const soundManager = new SoundManager();
+        
         const canvas = document.getElementById('tetris');
         const context = canvas.getContext('2d');
         
-        // 獲取下一個方塊預覽畫布和其 2D 繪圖上下文
         const nextCanvas = document.getElementById('next-piece-canvas');
         const nextContext = nextCanvas.getContext('2d');
         
-        // AI狀態指示器
         const aiIndicator = document.getElementById('ai-indicator');
+        const pauseText = document.getElementById('pause-text');
         
-        // 響應式調整 Canvas 大小
         function resizeCanvas() {
             let maxHeight = window.innerHeight * 0.65;
             let scale = maxHeight / 20;
             const blockSize = Math.floor(scale);
             
-            // 設置主遊戲畫布的尺寸和縮放
             context.canvas.width = blockSize * 10 * 1.4;
             context.canvas.height = blockSize * 20 * 1.4;
             context.scale(blockSize * 1.4, blockSize * 1.4);
 
-            // 修復：重置下一個方塊預覽畫布的縮放
-            nextContext.setTransform(1, 0, 0, 1, 0, 0); // 重置變換矩陣
-            // 設置預覽畫布的縮放，使其適應 4x4 的網格
+            nextContext.setTransform(1, 0, 0, 1, 0, 0);
             nextContext.scale(nextCanvas.width / 4, nextCanvas.height / 4);
             
-            // 重新繪製下一個方塊（如果存在）
             if (player.next) {
                 drawNext();
             }
@@ -549,31 +790,41 @@
             return blockSize;
         }
 
-        // 遊戲變數定義
         let blockSize = 20;
-        const COLS = 10; // 遊戲區域列數
-        const ROWS = 20; // 遊戲區域行數
-        let score = 0; // 當前分數
-        let highScore = localStorage.getItem('tetris_highscore') || 0; // 從本地存儲獲取最高分
-        let level = 1; // 當前等級
-        let dropCounter = 0; // 下落計數器
-        let dropInterval = 1000; // 下落間隔（毫秒）
-        let lastTime = 0; // 上一幀的時間戳
-        let isPaused = true; // 遊戲是否暫停
-        let isGameOver = false; // 遊戲是否結束
-        let gameMode = 'beginner'; // 當前遊戲模式
-        let isSoftDropping = false; // 是否正在軟降
-        let softDropInterval = 50; // 軟降間隔（毫秒）
-        let isAutoPlay = false; // 是否啟用AI自動遊戲
-        let autoPlayTimer = null; // AI自動遊戲計時器
-        let lastAutoPlayTime = 0; // 上次AI自動遊戲時間
-        let totalLinesCleared = 0; // 總消除行數
+        const COLS = 10;
+        const ROWS = 20;
+        let score = 0;
+        let highScore = localStorage.getItem('tetris_highscore') || 0;
+        let level = 1;
+        let dropCounter = 0;
+        let dropInterval = 700;
+        let lastTime = 0;
+        let isPaused = true;
+        let isGameOver = false;
+        let gameMode = 'easy';
+        let isSoftDropping = false;
+        let softDropInterval = 30;
+        let isAutoPlay = false;
+        let autoPlayTimer = null;
+        let lastAutoPlayTime = 0;
+        let totalLinesCleared = 0;
+        let clearingLines = [];
+        let clearingAnimationProgress = 0;
+        let piecesCount = 0;
+        let nextSpecialPiece = 50;
+        let specialPiecesCount = 0;
+        let isSpecialPauseEnabled = false;
+        let isSpecialPiecePaused = false;
+        let isGameCompleted = false;
+        let isCompletionEffectEnabled = true;
+        let fireworkInterval = null;
 
-        // 三擊計數器變量 - 用於檢測連續點擊
-        let tripleClickCount = 0; // 點擊計數
-        let tripleClickTimer = null; // 計時器
+        let tripleClickCount = 0;
+        let tripleClickTimer = null;
 
-        // 遊戲模式設定
+        // 每級加速量變數
+        const levelSpeedIncrease = 5;
+
         const gameModes = {
             'beginner': {
                 name: '入門',
@@ -607,31 +858,53 @@
             }
         };
 
-        // 初始化顯示
         document.getElementById('highscore').innerText = highScore;
         document.getElementById('lines').innerText = totalLinesCleared;
+        document.getElementById('pieces-count').innerText = piecesCount;
         updateSpeedDisplay();
 
-        // 方塊類型和對應顏色定義
-        const pieces = 'ILJOTSZ'; // 七種俄羅斯方塊類型
+        const pieces = 'ILJOTSZ';
         const colors = [
-            null, // 索引0不使用
-            '#FF0D72', // I型方塊顏色
-            '#0DC2FF', // L型方塊顏色
-            '#0DFF72', // J型方塊顏色
-            '#F538FF', // O型方塊顏色
-            '#FF8E0D', // Z型方塊顏色
-            '#FFE138', // S型方塊顏色
-            '#3877FF', // T型方塊顏色
+            null,
+            '#00FFFF', // I - 亮青色
+            '#0000FF', // L - 藍色
+            '#FF8000', // J - 橙色
+            '#FFFF00', // O - 黃色
+            '#FF0000', // Z - 紅色
+            '#00FF00', // S - 綠色
+            '#8000FF', // T - 紫色
+            '#C0C0C0', // X - 銀色
+            '#A0A0A0', // U - 灰色
+            '#808080'  // H - 深灰色
         ];
 
-        // =================================================================
-        // 重新實現正確的AI算法
-        // =================================================================
+        const specialPieces = ['X', 'U', 'H'];
+        const specialColors = [8, 9, 10];
+
+        // 計算等級偏移量的函數
+        function calculateLevelOffset(mode) {
+            const beginnerBaseSpeed = gameModes['beginner'].baseSpeed;
+            const modeBaseSpeed = gameModes[mode].baseSpeed;
+            // 計算偏移量 = (入門速度 - 當前模式速度) / 每級加速量 + 1
+            return Math.floor((beginnerBaseSpeed - modeBaseSpeed) / levelSpeedIncrease) + 1;
+        }
+
+        // 計算顯示等級（基於入門模式）
+        function getDisplayLevel() {
+            const offset = calculateLevelOffset(gameMode);
+            return offset + (level - 1);
+        }
+
+        // 計算最高等級（基於入門模式）
+        function getMaxLevel() {
+            const beginnerBaseSpeed = gameModes['beginner'].baseSpeed;
+            const minSpeed = 20; // 最小速度設定為20ms
+            // 最高等級 = (入門速度 - 最小速度) / 每級加速量 + 1
+            return Math.floor((beginnerBaseSpeed - minSpeed) / levelSpeedIncrease) + 1;
+        }
 
         class TetrisIntelligence {
             constructor() {
-                // 使用原始AI的權重參數
                 this.weights = {
                     aggregateHeight: -0.510066,
                     completeLines: 0.760666,
@@ -640,40 +913,32 @@
                 };
             }
 
-            // 尋找最佳移動
             findOptimalMove(arena, currentPiece) {
                 let bestScore = -Infinity;
                 let bestPosition = null;
                 let bestRotation = 0;
 
-                // 嘗試所有可能的旋轉
                 for (let rotation = 0; rotation < 4; rotation++) {
                     const testPiece = this.copyPiece(currentPiece);
                     
-                    // 應用旋轉
                     for (let i = 0; i < rotation; i++) {
                         if (!this.rotatePiece(testPiece, arena)) break;
                     }
 
-                    // 移動到最左邊
                     while (this.canMoveLeft(testPiece, arena)) {
                         testPiece.pos.x--;
                     }
 
-                    // 嘗試所有可能的水平位置
                     while (this.isValidPosition(testPiece, arena)) {
                         const landedPiece = this.copyPiece(testPiece);
                         
-                        // 模擬方塊下落到底部
                         while (this.canMoveDown(landedPiece, arena)) {
                             landedPiece.pos.y++;
                         }
 
-                        // 創建測試場地來評估這個位置
                         const testArena = this.copyArena(arena);
                         this.placePiece(testArena, landedPiece);
                         
-                        // 計算分數
                         const score = this.evaluatePosition(testArena);
                         
                         if (score > bestScore) {
@@ -693,7 +958,6 @@
                 };
             }
 
-            // 評估位置質量
             evaluatePosition(arena) {
                 const features = {
                     aggregateHeight: this.calculateTotalHeight(arena),
@@ -702,14 +966,12 @@
                     bumpiness: this.calculateRoughness(arena)
                 };
 
-                // 使用原始AI的評估公式
                 return this.weights.aggregateHeight * features.aggregateHeight +
                        this.weights.completeLines * features.completeLines +
                        this.weights.holes * features.holes +
                        this.weights.bumpiness * features.bumpiness;
             }
 
-            // 計算總高度
             calculateTotalHeight(arena) {
                 let total = 0;
                 for (let col = 0; col < COLS; col++) {
@@ -718,7 +980,6 @@
                 return total;
             }
 
-            // 計算列高度
             getColumnHeight(arena, col) {
                 for (let row = 0; row < ROWS; row++) {
                     if (arena[row][col] !== 0) {
@@ -728,7 +989,6 @@
                 return 0;
             }
 
-            // 計算完成的行數
             countCompleteLines(arena) {
                 let count = 0;
                 for (let row = 0; row < ROWS; row++) {
@@ -739,7 +999,6 @@
                 return count;
             }
 
-            // 檢查行是否完成
             isRowComplete(arena, row) {
                 for (let col = 0; col < COLS; col++) {
                     if (arena[row][col] === 0) {
@@ -749,7 +1008,6 @@
                 return true;
             }
 
-            // 計算空洞數量
             countHoles(arena) {
                 let holes = 0;
                 for (let col = 0; col < COLS; col++) {
@@ -765,7 +1023,6 @@
                 return holes;
             }
 
-            // 計算不平整度
             calculateRoughness(arena) {
                 let bumpiness = 0;
                 const heights = [];
@@ -781,12 +1038,10 @@
                 return bumpiness;
             }
 
-            // 複製遊戲場地
             copyArena(arena) {
                 return arena.map(row => [...row]);
             }
 
-            // 複製方塊
             copyPiece(piece) {
                 return {
                     matrix: piece.matrix.map(row => [...row]),
@@ -794,23 +1049,19 @@
                 };
             }
 
-            // 旋轉方塊
             rotatePiece(piece, arena) {
                 const originalMatrix = piece.matrix.map(row => [...row]);
                 const n = piece.matrix.length;
                 
-                // 轉置矩陣
                 for (let i = 0; i < n; i++) {
                     for (let j = 0; j < i; j++) {
-                        [piece.matrix[i][j], piece.matrix[j][i]] = 
+                        [piece.matrix[i][j], piece.matrix[j][i]] =
                         [piece.matrix[j][i], piece.matrix[i][j]];
                     }
                 }
                 
-                // 反轉每一行（順時針旋轉）
                 piece.matrix.forEach(row => row.reverse());
                 
-                // 檢查旋轉後是否有效
                 if (!this.isValidPosition(piece, arena)) {
                     piece.matrix = originalMatrix;
                     return false;
@@ -819,7 +1070,6 @@
                 return true;
             }
 
-            // 檢查是否可以向左移動
             canMoveLeft(piece, arena) {
                 piece.pos.x--;
                 const canMove = this.isValidPosition(piece, arena);
@@ -827,7 +1077,6 @@
                 return canMove;
             }
 
-            // 檢查是否可以向下移動
             canMoveDown(piece, arena) {
                 piece.pos.y++;
                 const canMove = this.isValidPosition(piece, arena);
@@ -835,7 +1084,6 @@
                 return canMove;
             }
 
-            // 檢查位置是否有效
             isValidPosition(piece, arena) {
                 const matrix = piece.matrix;
                 const pos = piece.pos;
@@ -846,8 +1094,8 @@
                             const boardX = pos.x + x;
                             const boardY = pos.y + y;
                             
-                            if (boardX < 0 || boardX >= COLS || 
-                                boardY >= ROWS || 
+                            if (boardX < 0 || boardX >= COLS ||
+                                boardY >= ROWS ||
                                 (boardY >= 0 && arena[boardY][boardX] !== 0)) {
                                 return false;
                             }
@@ -857,7 +1105,6 @@
                 return true;
             }
 
-            // 放置方塊到場地
             placePiece(arena, piece) {
                 const matrix = piece.matrix;
                 const pos = piece.pos;
@@ -875,32 +1122,21 @@
             }
         }
 
-        // 創建AI實例
         const gameAI = new TetrisIntelligence();
 
-        // =================================================================
-        // 改進的AI移動邏輯
-        // =================================================================
-
-        /**
-         * AI移動邏輯 - 使用正確的AI算法
-         */
         function autoPlayMove() {
             if (!player.matrix || isPaused || !isAutoPlay) return;
             
-            // 使用AI計算最佳移動
             const bestMove = gameAI.findOptimalMove(arena, {
                 matrix: player.matrix,
                 pos: { ...player.pos }
             });
             
             if (bestMove && bestMove.piece) {
-                // 執行旋轉
                 for (let i = 0; i < bestMove.rotation; i++) {
                     playerRotate(1);
                 }
                 
-                // 執行水平移動到目標位置
                 const targetX = bestMove.piece.pos.x;
                 const currentX = player.pos.x;
                 const moveDirection = Math.sign(targetX - currentX);
@@ -914,66 +1150,39 @@
                     }
                 }
                 
-                // 直接硬降
                 playerHardDrop();
             }
         }
 
-        // =================================================================
-        // 新增功能：三擊最高分面板切換AI託管
-        // =================================================================
-
-        /**
-         * 初始化三擊檢測功能
-         */
         function initTripleClickFeature() {
             const highscorePanel = document.getElementById('highscore-panel');
-            
-            // 為最高分面板添加點擊事件監聽器
             highscorePanel.addEventListener('click', handleTripleClick);
         }
 
-        /**
-         * 處理三擊事件
-         */
         function handleTripleClick() {
-            // 增加點擊計數
             tripleClickCount++;
             
-            // 如果這是第一次點擊，設置計時器
             if (tripleClickCount === 1) {
                 tripleClickTimer = setTimeout(() => {
-                    // 如果在指定時間內沒有達到三次點擊，重置計數
                     tripleClickCount = 0;
-                }, 500); // 設置500毫秒的時間窗口
+                }, 500);
             }
             
-            // 如果達到三次點擊
             if (tripleClickCount === 3) {
-                // 清除計時器
                 clearTimeout(tripleClickTimer);
-                // 重置計數
                 tripleClickCount = 0;
                 
-                // 觸發切換AI託管功能
                 toggleAutoPlay();
                 
-                // 添加視覺反饋
                 const highscorePanel = document.getElementById('highscore-panel');
                 highscorePanel.classList.add('highscore-triple-click');
                 
-                // 移除動畫類，以便下次可以再次觸發
                 setTimeout(() => {
                     highscorePanel.classList.remove('highscore-triple-click');
                 }, 500);
             }
         }
 
-        // =================================================================
-        // 遊戲核心邏輯（保持不變）
-        // =================================================================
-
-        // 選擇遊戲等級並開始遊戲
         function selectLevel(mode) {
             gameMode = mode;
             const modeConfig = gameModes[mode];
@@ -989,30 +1198,57 @@
             document.getElementById('mode').innerText = modeConfig.name;
             updateSpeedDisplay();
             
-            // 選擇難度後直接開始遊戲
+            // 更新等級顯示為入門基準等級
+            updateDisplayLevel();
+            
             startGame();
         }
 
-        // 更新速度顯示
         function updateSpeedDisplay() {
             document.getElementById('speed').innerText = dropInterval + 'ms';
         }
 
-        // 切換暫停狀態
+        // 更新顯示等級（基於入門模式）
+        function updateDisplayLevel() {
+            const displayLevel = getDisplayLevel();
+            document.getElementById('level').innerText = displayLevel;
+        }
+
+        function updateModeBySpeed() {
+            let newMode = 'beginner';
+            
+            if (dropInterval <= 50) {
+                newMode = 'expert';
+            } else if (dropInterval <= 200) {
+                newMode = 'hard';
+            } else if (dropInterval <= 400) {
+                newMode = 'normal';
+            } else if (dropInterval <= 700) {
+                newMode = 'easy';
+            } else {
+                newMode = 'beginner';
+            }
+            
+            if (newMode !== gameMode) {
+                gameMode = newMode;
+                document.getElementById('mode').innerText = gameModes[newMode].name;
+            }
+        }
+
+        // 修改暫停功能，添加暫停文字顯示
         function togglePause() {
-            if (isGameOver) return;
+            if (isGameOver || isGameCompleted) return;
             
             isPaused = !isPaused;
-            const canvas = document.getElementById('tetris');
             const pauseStatus = document.getElementById('pause-status');
             
             if (isPaused) {
-                canvas.classList.add('paused');
                 pauseStatus.innerHTML = '▶';
+                pauseText.style.display = 'block'; // 顯示暫停文字
                 stopAutoPlay();
             } else {
-                canvas.classList.remove('paused');
                 pauseStatus.innerHTML = '❚❚';
+                pauseText.style.display = 'none'; // 隱藏暫停文字
                 lastTime = performance.now();
                 update();
                 if (isAutoPlay) {
@@ -1021,9 +1257,8 @@
             }
         }
 
-        // 切換電腦託管模式
         function toggleAutoPlay() {
-            if (isPaused || isGameOver) return;
+            if (isPaused || isGameOver || isGameCompleted) return;
             
             isAutoPlay = !isAutoPlay;
             
@@ -1036,7 +1271,6 @@
             }
         }
 
-        // 開始電腦託管
         function startAutoPlay() {
             if (!isAutoPlay || isPaused) return;
             
@@ -1054,7 +1288,6 @@
             }, 50);
         }
 
-        // 停止電腦託管
         function stopAutoPlay() {
             if (autoPlayTimer) {
                 clearInterval(autoPlayTimer);
@@ -1062,7 +1295,6 @@
             }
         }
 
-        // 創建遊戲矩陣
         function createMatrix(w, h) {
             const matrix = [];
             for (let i = 0; i < h; i++) {
@@ -1071,7 +1303,6 @@
             return matrix;
         }
 
-        // 方塊形狀定義
         const pieceShapes = {
             'I': [[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]],
             'L': [[0,2,0],[0,2,0],[0,2,2]],
@@ -1079,14 +1310,43 @@
             'O': [[4,4],[4,4]],
             'Z': [[5,5,0],[0,5,5],[0,0,0]],
             'S': [[0,6,6],[6,6,0],[0,0,0]],
-            'T': [[0,7,0],[7,7,7],[0,0,0]]
+            'T': [[0,7,0],[7,7,7],[0,0,0]],
+            'X': [[0,8,0],[8,8,8],[0,8,0]],
+            'U': [[9,0,9],[9,0,9],[9,9,9]],
+            'H': [[10,0,10],[10,10,10],[10,0,10]]
         };
 
         function createPiece(type) {
             return pieceShapes[type] || pieceShapes['T'];
         }
 
-        // 初始化遊戲區域和玩家狀態
+        function createRandomColorSpecialPiece(type) {
+            const matrix = createPiece(type);
+            const randomColorIndex = specialColors[Math.floor(Math.random() * specialColors.length)];
+            
+            for (let y = 0; y < matrix.length; y++) {
+                for (let x = 0; x < matrix[y].length; x++) {
+                    if (matrix[y][x] !== 0) {
+                        matrix[y][x] = randomColorIndex;
+                    }
+                }
+            }
+            
+            return matrix;
+        }
+
+        // 在入門和簡單模式下降低S和Z方塊出現機率的函數
+        function getRandomPieceType() {
+            // 如果不是入門或簡單模式，或者已經超過100個方塊，正常隨機
+            if ((gameMode !== 'beginner' && gameMode !== 'easy') || piecesCount >= 100) {
+                return pieces[Math.floor(Math.random() * pieces.length)];
+            }
+            
+            // 在入門和簡單模式的前100個方塊中，降低S和Z的出現機率
+            const weightedPieces = 'IILLJJOOTT'; // 增加其他方塊的權重，減少S和Z
+            return weightedPieces[Math.floor(Math.random() * weightedPieces.length)];
+        }
+
         const arena = createMatrix(COLS, ROWS);
         const player = { 
             pos: {x: 0, y: 0},
@@ -1095,24 +1355,42 @@
             next: null
         };
 
-        // 繪製矩陣
+        // 繪製單個立體方塊
+        function drawBlock(ctx, x, y, color, isGhost = false) {
+            if (isGhost) {
+                ctx.globalAlpha = 0.2;
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(x, y, 1, 1);
+                ctx.globalAlpha = 1.0;
+            } else {
+                // 主要方塊顏色
+                ctx.fillStyle = color;
+                ctx.fillRect(x, y, 1, 1);
+                
+                // 立體效果 - 高光（左上角）
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.fillRect(x, y, 0.8, 0.2);
+                ctx.fillRect(x, y, 0.2, 0.8);
+                
+                // 立體效果 - 陰影（右下角）
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.fillRect(x + 0.2, y + 0.8, 0.8, 0.2);
+                ctx.fillRect(x + 0.8, y + 0.2, 0.2, 0.8);
+                
+                // 邊框
+                ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+                ctx.lineWidth = 0.05;
+                ctx.strokeRect(x, y, 1, 1);
+            }
+        }
+
+        // 繪製矩陣 - 使用新的立體方塊繪製函數
         function drawMatrix(matrix, offset, ctx = context, isGhost = false) {
             for (let y = 0; y < matrix.length; y++) {
                 for (let x = 0; x < matrix[y].length; x++) {
                     const value = matrix[y][x];
                     if (value !== 0) {
-                        if (isGhost) {
-                            ctx.globalAlpha = 0.2;
-                            ctx.fillStyle = '#ffffff';
-                            ctx.fillRect(x + offset.x, y + offset.y, 1, 1);
-                            ctx.globalAlpha = 1.0;
-                        } else {
-                            ctx.fillStyle = colors[value];
-                            ctx.fillRect(x + offset.x, y + offset.y, 1, 1);
-                            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-                            ctx.lineWidth = 0.05;
-                            ctx.strokeRect(x + offset.x, y + offset.y, 1, 1);
-                        }
+                        drawBlock(ctx, x + offset.x, y + offset.y, colors[value], isGhost);
                     }
                 }
             }
@@ -1156,7 +1434,8 @@
                 context.stroke();
             }
 
-            drawMatrix(arena, {x: 0, y: 0});
+            // 繪製遊戲場地，包括正在清除的行
+            drawArenaWithClearingLines();
 
             if (player.matrix) {
                 const ghostPos = getGhostPosition();
@@ -1165,16 +1444,39 @@
             }
         }
 
-        // 繪製下一個方塊預覽
+        // 繪製帶有清除行動畫的遊戲場地 - 修復為使用立體方塊
+        function drawArenaWithClearingLines() {
+            for (let y = 0; y < ROWS; y++) {
+                for (let x = 0; x < COLS; x++) {
+                    const value = arena[y][x];
+                    if (value !== 0) {
+                        // 檢查這一行是否正在清除
+                        const isClearing = clearingLines.includes(y);
+                        
+                        if (isClearing) {
+                            // 根據動畫進度計算透明度
+                            const alpha = 0.5 + 0.5 * Math.sin(clearingAnimationProgress * Math.PI * 4);
+                            context.globalAlpha = alpha;
+                            context.fillStyle = '#ffffff';
+                            context.fillRect(x, y, 1, 1);
+                            context.globalAlpha = 1.0;
+                        } else {
+                            // 使用立體效果繪製已落下的方塊
+                            drawBlock(context, x, y, colors[value]);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 繪製下一個方塊預覽 - 使用立體效果
         function drawNext() {
             // 清除預覽畫布
             nextContext.fillStyle = '#000';
             nextContext.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
             
-            // 如果沒有下一個方塊，返回
             if (!player.next) return;
             
-            // 計算偏移量使方塊居中
             const offsetX = (4 - player.next[0].length) / 2;
             const offsetY = (4 - player.next.length) / 2;
             
@@ -1183,13 +1485,34 @@
                 for (let x = 0; x < player.next[y].length; x++) {
                     const value = player.next[y][x];
                     if (value !== 0) {
+                        // 主要方塊顏色
                         nextContext.fillStyle = colors[value];
                         nextContext.fillRect(x + offsetX, y + offsetY, 1, 1);
+                        
+                        // 立體效果 - 高光（左上角）
+                        nextContext.fillStyle = 'rgba(255,255,255,0.3)';
+                        nextContext.fillRect(x + offsetX, y + offsetY, 0.8, 0.2);
+                        nextContext.fillRect(x + offsetX, y + offsetY, 0.2, 0.8);
+                        
+                        // 立體效果 - 陰影（右下角）
+                        nextContext.fillStyle = 'rgba(0,0,0,0.3)';
+                        nextContext.fillRect(x + offsetX + 0.2, y + offsetY + 0.8, 0.8, 0.2);
+                        nextContext.fillRect(x + offsetX + 0.8, y + offsetY + 0.2, 0.2, 0.8);
+                        
+                        // 邊框
                         nextContext.strokeStyle = 'rgba(255,255,255,0.5)';
                         nextContext.lineWidth = 0.1;
                         nextContext.strokeRect(x + offsetX, y + offsetY, 1, 1);
                     }
                 }
+            }
+            
+            // 檢查是否需要暫停（如果特殊方塊暫停開關開啟且下一個方塊是特殊方塊）
+            if (isSpecialPauseEnabled && specialPieces.includes(getPieceType(player.next))) {
+                isSpecialPiecePaused = true;
+                isPaused = true;
+                document.getElementById('pause-status').innerHTML = '▶';
+                pauseText.style.display = 'block'; // 顯示暫停文字
             }
         }
 
@@ -1202,6 +1525,34 @@
                     }
                 });
             });
+            
+            // 播放方塊落定音效
+            soundManager.play('land');
+            
+            // 如果是特殊方塊，播放特殊音效
+            if (specialPieces.includes(getPieceType(player.matrix))) {
+                soundManager.play('specialPiece');
+                // 特殊方塊已計入piecesCount，不需要單獨計數
+            }
+        }
+
+        // 獲取方塊類型
+        function getPieceType(matrix) {
+            for (const [type, shape] of Object.entries(pieceShapes)) {
+                let match = true;
+                for (let y = 0; y < matrix.length && match; y++) {
+                    for (let x = 0; x < matrix[y].length && match; x++) {
+                        if ((shape[y][x] !== 0 && matrix[y][x] === 0) || 
+                            (shape[y][x] === 0 && matrix[y][x] !== 0)) {
+                            match = false;
+                        }
+                    }
+                }
+                if (match && specialPieces.includes(type)) {
+                    return type;
+                }
+            }
+            return null;
         }
 
         // 旋轉方塊矩陣
@@ -1225,7 +1576,7 @@
             const o = player.pos;
             for (let y = 0; y < m.length; y++) {
                 for (let x = 0; x < m[y].length; x++) {
-                    if (m[y][x] !== 0 && 
+                    if (m[y][x] !== 0 &&
                         (arena[y + o.y] && arena[y + o.y][x + o.x]) !== 0) {
                         return true;
                     }
@@ -1238,25 +1589,91 @@
         function arenaSweep() {
             let rowCount = 1;
             let linesCleared = 0;
+            let linesToClear = [];
+            
+            // 第一遍：標記需要清除的行
             outer: for (let y = arena.length - 1; y > 0; y--) {
                 for (let x = 0; x < arena[y].length; x++) {
                     if (arena[y][x] === 0) continue outer;
                 }
-                const row = arena.splice(y, 1)[0].fill(0);
-                arena.unshift(row);
-                y++;
-                player.score += rowCount * 10;
-                rowCount *= 2;
-                linesCleared++;
+                linesToClear.push(y);
             }
             
-            // 更新消除行數統計
-            if (linesCleared > 0) {
-                totalLinesCleared += linesCleared;
-                document.getElementById('lines').innerText = totalLinesCleared;
+            // 如果有需要清除的行
+            if (linesToClear.length > 0) {
+                // 播放消除行音效
+                soundManager.play('lineClear');
+                
+                // 開始清除動畫
+                startClearingAnimation(linesToClear);
+                
+                // 延遲執行實際的清除邏輯，等待動畫完成
+                setTimeout(() => {
+                    // 實際清除行
+                    for (let y of linesToClear) {
+                        arena.splice(y, 1);
+                        arena.unshift(new Array(COLS).fill(0));
+                        player.score += rowCount * 10;
+                        rowCount *= 2;
+                        linesCleared++;
+                    }
+                    
+                    // 更新消除行數統計
+                    if (linesCleared > 0) {
+                        totalLinesCleared += linesCleared;
+                        document.getElementById('lines').innerText = totalLinesCleared;
+                        
+                        // 修復：在AI模式下也更新等級和速度
+                        updateLevelAndSpeed();
+                    }
+                    
+                    updateScore();
+                    
+                    // 結束清除動畫
+                    endClearingAnimation();
+                }, 500);
             }
             
-            updateScore();
+            return linesCleared;
+        }
+
+        // 修改：更新等級和速度的函數 - 每升一級減少levelSpeedIncrease
+        function updateLevelAndSpeed() {
+            // 每消除10行提升一個等級
+            const newLevel = Math.floor(totalLinesCleared / 10) + 1;
+            
+            if (newLevel > level) {
+                level = newLevel;
+                
+                // 根據等級更新速度 - 每升一級，速度加快（下落間隔減少levelSpeedIncrease）
+                const modeConfig = gameModes[gameMode];
+                dropInterval = Math.max(20, modeConfig.baseSpeed - (level - 1) * levelSpeedIncrease);
+                updateSpeedDisplay();
+                
+                // 更新顯示等級（基於入門模式）
+                updateDisplayLevel();
+                
+                // 根據速度更新難易度模式
+                updateModeBySpeed();
+                
+                // 檢查是否達到最高等級
+                const displayLevel = getDisplayLevel();
+                const maxLevel = getMaxLevel();
+                if (displayLevel >= maxLevel && !isGameCompleted) {
+                    gameCompleted();
+                }
+            }
+        }
+
+        // 開始清除行動畫
+        function startClearingAnimation(lines) {
+            clearingLines = lines;
+            clearingAnimationProgress = 0;
+        }
+
+        // 結束清除行動畫
+        function endClearingAnimation() {
+            clearingLines = [];
         }
 
         // 更新分數和等級顯示
@@ -1272,18 +1689,49 @@
         // 增加等級的函數
         function increaseLevel() {
             level++;
-            dropInterval = Math.max(50, 1000 - (level - 1) * 50);
-            document.getElementById('level').innerText = level;
+            dropInterval = Math.max(20, dropInterval - levelSpeedIncrease);
             updateSpeedDisplay();
+            updateModeBySpeed();
+            // 更新顯示等級（基於入門模式）
+            updateDisplayLevel();
+            
+            // 檢查是否達到最高等級
+            const displayLevel = getDisplayLevel();
+            const maxLevel = getMaxLevel();
+            if (displayLevel >= maxLevel && !isGameCompleted) {
+                gameCompleted();
+            }
         }
 
         // 減少等級的函數
         function decreaseLevel() {
             if (level > 1) {
                 level--;
-                dropInterval = Math.max(50, 1000 - (level - 1) * 50);
-                document.getElementById('level').innerText = level;
+                dropInterval = dropInterval + levelSpeedIncrease;
                 updateSpeedDisplay();
+                updateModeBySpeed();
+                // 更新顯示等級（基於入門模式）
+                updateDisplayLevel();
+            }
+        }
+
+        // 在底部添加一行隨機方塊
+        function addRandomRow() {
+            // 創建一行隨機方塊（每個位置有50%的機率有方塊，方塊類型隨機）
+            const newRow = new Array(COLS).fill(0).map(() => {
+                return Math.random() < 0.5 ? 0 : Math.floor(Math.random() * 7) + 1;
+            });
+            
+            // 將所有行向上移動一行
+            for (let y = 0; y < ROWS - 1; y++) {
+                for (let x = 0; x < COLS; x++) {
+                    arena[y][x] = arena[y + 1][x];
+                }
+            }
+            
+            // 在底部添加新行
+            for (let x = 0; x < COLS; x++) {
+                arena[ROWS - 1][x] = newRow[x];
             }
         }
 
@@ -1299,14 +1747,49 @@
             dropCounter = 0;
         }
 
-        // 重置玩家方塊（生成新方塊）
+        // 重置玩家方塊（生成新方塊）- 修復預覽與實際不一致的問題
         function playerReset() {
-            if(player.next === null) {
-                player.next = createPiece(pieces[Math.floor(Math.random() * pieces.length)]);
+            // 更新方塊計數器
+            piecesCount++;
+            document.getElementById('pieces-count').innerText = piecesCount;
+            
+            // 檢查是否需要生成特殊方塊
+            let isSpecial = false;
+            
+            // 使用之前生成的下一個方塊作為當前方塊
+            if (player.next) {
+                player.matrix = player.next;
+            } else {
+                // 如果沒有下一個方塊，生成一個普通方塊
+                const pieceType = getRandomPieceType(); // 使用新的隨機方塊生成函數
+                player.matrix = createPiece(pieceType);
             }
             
-            player.matrix = player.next;
-            player.next = createPiece(pieces[Math.floor(Math.random() * pieces.length)]);
+            // 檢查當前方塊是否為特殊方塊
+            const currentPieceType = getPieceType(player.matrix);
+            if (currentPieceType && specialPieces.includes(currentPieceType)) {
+                isSpecial = true;
+                // 特殊方塊已計入piecesCount，不需要單獨計數
+                
+                // 當出現特殊方塊時，在底部添加一行隨機方塊
+                addRandomRow();
+            }
+            
+            // 生成新的下一個方塊
+            let nextPieceType;
+            if (piecesCount + 1 >= nextSpecialPiece) {
+                // 隨機從三種特殊方塊中選擇一種
+                const randomSpecialPiece = specialPieces[Math.floor(Math.random() * specialPieces.length)];
+                nextPieceType = randomSpecialPiece;
+                player.next = createRandomColorSpecialPiece(randomSpecialPiece);
+                nextSpecialPiece += 50;
+            } else {
+                // 使用新的隨機方塊生成函數
+                nextPieceType = getRandomPieceType();
+                player.next = createPiece(nextPieceType);
+            }
+            
+            // 立即繪製下一個方塊
             drawNext();
             
             player.pos.y = 0;
@@ -1318,38 +1801,143 @@
             }
         }
 
-        // 遊戲結束處理
+        // 遊戲結束處理 - 修改統計顯示
         function gameOver() {
             isGameOver = true;
             isPaused = true;
+            pauseText.style.display = 'none'; // 隱藏暫停文字
             stopAutoPlay();
             aiIndicator.classList.remove('active');
             
-            // 更新最終統計數據
+            // 播放遊戲結束音效
+            soundManager.play('gameOver');
+            
+            // 更新最終統計數據 - 移除最高分和特殊方塊數
             document.getElementById('final-score').innerText = player.score;
             document.getElementById('final-lines').innerText = totalLinesCleared;
-            document.getElementById('final-highscore').innerText = highScore;
+            document.getElementById('final-pieces').innerText = piecesCount;
             
             // 顯示遊戲結束畫面
             document.getElementById('game-over-overlay').style.display = 'flex';
+        }
+
+        // 遊戲通關處理 - 現在可以隨時觸發
+        function gameCompleted() {
+            isGameCompleted = true;
+            isPaused = true;
+            pauseText.style.display = 'none'; // 隱藏暫停文字
+            stopAutoPlay();
+            aiIndicator.classList.remove('active');
+            
+            // 更新通關統計數據
+            document.getElementById('completion-score').innerText = player.score;
+            document.getElementById('completion-lines').innerText = totalLinesCleared;
+            document.getElementById('completion-pieces').innerText = piecesCount;
+            
+            // 隱藏其他畫面
+            document.getElementById('game-over-overlay').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+            
+            // 顯示通關畫面
+            document.getElementById('completion-overlay').style.display = 'flex';
+            
+            // 啟動慶祝效果
+            if (isCompletionEffectEnabled) {
+                startCompletionEffects();
+            }
+        }
+
+        // 啟動慶祝效果（煙火和音效）
+        function startCompletionEffects() {
+            // 啟動音效
+            soundManager.startCompletionSound();
+            
+            // 啟動煙火效果
+            fireworkInterval = setInterval(createFirework, 500);
+        }
+
+        // 停止慶祝效果
+        function stopCompletionEffects() {
+            // 停止音效
+            soundManager.stopCompletionSound();
+            
+            // 停止煙火效果
+            if (fireworkInterval) {
+                clearInterval(fireworkInterval);
+                fireworkInterval = null;
+            }
+        }
+
+        // 切換慶祝效果
+        function toggleCompletionEffects() {
+            isCompletionEffectEnabled = !isCompletionEffectEnabled;
+            
+            if (isCompletionEffectEnabled) {
+                startCompletionEffects();
+            } else {
+                stopCompletionEffects();
+            }
+        }
+
+        // 創建煙火效果
+        function createFirework() {
+            const container = document.getElementById('completion-overlay');
+            const firework = document.createElement('div');
+            firework.className = 'firework';
+            
+            // 隨機顏色
+            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffffff'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            firework.style.backgroundColor = color;
+            firework.style.boxShadow = `0 0 10px ${color}`;
+            
+            // 隨機位置
+            const startX = Math.random() * 80 + 10; // 10% 到 90%
+            const startY = 100; // 從底部開始
+            firework.style.left = `${startX}%`;
+            firework.style.top = `${startY}%`;
+            
+            // 隨機目標位置
+            const targetX = (Math.random() - 0.5) * 100;
+            const targetY = -Math.random() * 80 - 10;
+            
+            // 設置CSS變量
+            firework.style.setProperty('--tx', `${targetX}px`);
+            firework.style.setProperty('--ty', `${targetY}px`);
+            
+            container.appendChild(firework);
+            
+            // 動畫結束後移除元素
+            setTimeout(() => {
+                if (firework.parentNode) {
+                    firework.parentNode.removeChild(firework);
+                }
+            }, 1500);
         }
 
         // 返回主菜單
         function backToMenu() {
             // 隱藏遊戲結束畫面
             document.getElementById('game-over-overlay').style.display = 'none';
+            document.getElementById('completion-overlay').style.display = 'none';
+            
+            // 停止慶祝效果
+            stopCompletionEffects();
             
             // 重置遊戲狀態
             isGameOver = false;
+            isGameCompleted = false;
             arena.forEach(row => row.fill(0));
             player.score = 0;
             totalLinesCleared = 0;
             level = 1;
+            piecesCount = 0;
+            nextSpecialPiece = 50;
             
             // 更新顯示
             document.getElementById('score').innerText = player.score;
             document.getElementById('lines').innerText = totalLinesCleared;
-            document.getElementById('level').innerText = level;
+            document.getElementById('pieces-count').innerText = piecesCount;
             
             // 重置託管狀態
             isAutoPlay = false;
@@ -1364,28 +1952,39 @@
         function restartGame() {
             // 隱藏遊戲結束畫面
             document.getElementById('game-over-overlay').style.display = 'none';
+            document.getElementById('completion-overlay').style.display = 'none';
+            
+            // 停止慶祝效果
+            stopCompletionEffects();
             
             // 重置遊戲狀態
             isGameOver = false;
+            isGameCompleted = false;
             arena.forEach(row => row.fill(0));
             player.score = 0;
             totalLinesCleared = 0;
             level = 1;
+            piecesCount = 0;
+            nextSpecialPiece = 50;
             dropInterval = gameModes[gameMode].baseSpeed;
             
             // 更新顯示
             document.getElementById('score').innerText = player.score;
             document.getElementById('lines').innerText = totalLinesCleared;
-            document.getElementById('level').innerText = level;
+            document.getElementById('pieces-count').innerText = piecesCount;
             updateSpeedDisplay();
             
             // 重置託管狀態
             isAutoPlay = false;
             aiIndicator.classList.remove('active');
             
+            // 更新顯示等級（基於入門模式）
+            updateDisplayLevel();
+            
             // 開始新遊戲
             playerReset();
             isPaused = false;
+            pauseText.style.display = 'none'; // 隱藏暫停文字
             lastTime = performance.now();
             update();
         }
@@ -1451,6 +2050,14 @@
             
             dropCounter += deltaTime;
             
+            // 更新清除行動畫
+            if (clearingLines.length > 0) {
+                clearingAnimationProgress += deltaTime / 500;
+                if (clearingAnimationProgress >= 1) {
+                    clearingAnimationProgress = 0;
+                }
+            }
+            
             if (isSoftDropping) {
                 if (dropCounter > softDropInterval) {
                     playerSoftDrop();
@@ -1469,23 +2076,75 @@
 
         // 開始遊戲
         function startGame() {
+            // 初始化音效管理器
+            soundManager.init();
+            
             document.getElementById('overlay').style.display = 'none';
-            if(isGameOver) { 
-                isGameOver = false; 
-                playerReset(); 
+            if(isGameOver || isGameCompleted) {
+                isGameOver = false;
+                isGameCompleted = false;
+                playerReset();
             }
             if(player.matrix === null) {
                 playerReset();
             }
             
             isPaused = false;
+            pauseText.style.display = 'none'; // 確保暫停文字隱藏
             update();
+        }
+
+        // 切換特殊方塊暫停開關
+        function toggleSpecialPause() {
+            isSpecialPauseEnabled = !isSpecialPauseEnabled;
+            document.getElementById('special-pause-status').innerText = isSpecialPauseEnabled ? 'ON' : 'OFF';
+        }
+
+        // 恢復特殊方塊暫停 - 修改為按任意鍵繼續
+        function resumeFromSpecialPause() {
+            if (isSpecialPiecePaused) {
+                isSpecialPiecePaused = false;
+                isPaused = false;
+                document.getElementById('pause-status').innerHTML = '❚❚';
+                pauseText.style.display = 'none'; // 隱藏暫停文字
+                lastTime = performance.now();
+                update();
+                if (isAutoPlay) {
+                    startAutoPlay();
+                }
+            }
         }
 
         // === 控制輸入 ===
         
         // 鍵盤控制事件監聽
         document.addEventListener('keydown', event => {
+            // E鍵處理：無論何時，E鍵用於觸發通關或切換慶祝效果
+            if (event.keyCode === 69) { // E鍵
+                if (isGameCompleted) {
+                    // 如果已經在通關狀態，則切換慶祝效果
+                    toggleCompletionEffects();
+                } else {
+                    // 否則，觸發通關
+                    gameCompleted();
+                }
+                event.preventDefault();
+                return;
+            }
+            
+            if (isSpecialPiecePaused) {
+                // 在特殊方塊暫停狀態下，任意鍵都可以恢復遊戲
+                resumeFromSpecialPause();
+                event.preventDefault();
+                return;
+            }
+            
+            if (event.keyCode === 80) { // P鍵 - 暫停
+                togglePause();
+                event.preventDefault();
+                return;
+            }
+            
             if(isPaused) return;
             
             if (event.keyCode === 37) playerMove(-1);
@@ -1508,12 +2167,12 @@
                 playerHardDrop();
                 event.preventDefault();
             }
-            else if (event.keyCode === 80) { // P鍵暫停
-                togglePause();
+            else if (event.keyCode === 67) {
+                toggleAutoPlay();
                 event.preventDefault();
             }
-            else if (event.keyCode === 67) { // C鍵切換AI託管
-                toggleAutoPlay();
+            else if (event.keyCode === 83) {
+                toggleSpecialPause();
                 event.preventDefault();
             }
         });
@@ -1567,7 +2226,7 @@
         // 設置各個控制按鈕
         setupBtn('btn-left', () => playerMove(-1));
         setupBtn('btn-right', () => playerMove(1));
-        setupBtn('btn-down', () => { 
+        setupBtn('btn-down', () => {
             isSoftDropping = true;
             playerSoftDrop();
         }, true);
@@ -1579,11 +2238,14 @@
         window.addEventListener('resize', resizeCanvas);
 
         // 初始化：生成第一個下一個方塊並繪製
-        player.next = createPiece(pieces[Math.floor(Math.random() * pieces.length)]);
+        player.next = createPiece(getRandomPieceType()); // 使用新的隨機方塊生成函數
         drawNext();
         
         // 初始化三擊功能
         initTripleClickFeature();
+
+        // 計算並顯示最高等級（基於入門模式）
+        console.log("最高等級（基於入門模式）:", getMaxLevel());
     </script>
 </body>
 </html>
