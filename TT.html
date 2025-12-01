@@ -70,6 +70,7 @@
             text-align: center;               /* 文字居中 */
             padding: 5px 2px;                 /* 內邊距 */
             box-shadow: inset 0 0 10px rgba(0,0,0,0.5); /* 內部陰影 */
+            transition: all 0.3s ease;        /* 添加過渡動畫效果 */
         }
 
         /* 可點擊的面板樣式 */
@@ -501,9 +502,36 @@
             100% { color: #feca57; text-shadow: 0 0 10px #feca57; }    /* 橙色 */
         }
 
-        /* 隱藏指定面板的類 */
-        .hidden-panel {
-            display: none !important;         /* 強制隱藏，優先級最高 */
+        /* 第一層面板樣式（默認顯示） */
+        .primary-panel {
+            display: block;                    /* 默認顯示 */
+            opacity: 1;                        /* 完全可見 */
+            max-height: 100px;                 /* 設置足夠的高度 */
+            overflow: hidden;                  /* 隱藏溢出內容 */
+            transition: opacity 0.3s ease, max-height 0.3s ease; /* 添加過渡動畫 */
+        }
+
+        /* 第二層面板樣式（默認隱藏） */
+        .secondary-panel {
+            display: none;                     /* 默認隱藏 */
+            opacity: 0;                        /* 完全透明 */
+            max-height: 0;                     /* 高度為0 */
+            overflow: hidden;                  /* 隱藏溢出內容 */
+            transition: opacity 0.3s ease, max-height 0.3s ease; /* 添加過渡動畫 */
+        }
+
+        /* 第二層面板顯示時的樣式 */
+        .secondary-panel.visible {
+            display: block !important;         /* 強制顯示，優先級最高 */
+            opacity: 1;                        /* 完全顯示 */
+            max-height: 100px;                 /* 設置足夠的高度 */
+        }
+
+        /* 第一層面板隱藏時的樣式 */
+        .primary-panel.hidden {
+            display: none !important;          /* 強制隱藏，優先級最高 */
+            opacity: 0;                        /* 完全透明 */
+            max-height: 0;                     /* 高度為0 */
         }
 
         /* 移動設備響應式樣式 - 重點修改部分 */
@@ -650,64 +678,64 @@
 
         <!-- 右側信息面板 -->
         <div id="sidebar">
-            <!-- 下一個方塊預覽 -->
-            <div class="panel-box">
+            <!-- 下一個方塊預覽（始終顯示） -->
+            <div class="panel-box primary-panel" id="next-piece-panel">
                 <div class="panel-label">Next</div>
                 <canvas id="next-piece-canvas" width="60" height="60"></canvas>
             </div>
             
-            <!-- 最高分數面板 -->
-            <div class="panel-box" id="highscore-panel">
+            <!-- 最高分數面板（始終顯示） -->
+            <div class="panel-box primary-panel" id="highscore-panel">
                 <div class="panel-label">Highscore</div>
                 <div id="highscore" class="panel-value">0</div>
             </div>
             
-            <!-- 當前遊戲模式 -->
-            <div class="panel-box">
+            <!-- 第一層：當前遊戲模式（按H時隱藏） -->
+            <div class="panel-box primary-panel" id="mode-panel">
                 <div class="panel-label">Mode</div>
                 <div id="mode" class="panel-value">簡易</div>
             </div>
             
-            <!-- 當前分數 -->
-            <div class="panel-box">
+            <!-- 第一層：當前分數（按H時隱藏） -->
+            <div class="panel-box primary-panel" id="score-panel">
                 <div class="panel-label">Score</div>
                 <div id="score" class="panel-value">0</div>
             </div>
             
-            <!-- 當前等級 -->
-            <div class="panel-box">
+            <!-- 第一層：當前等級（按H時隱藏） -->
+            <div class="panel-box primary-panel" id="level-panel">
                 <div class="panel-label">Level</div>
                 <div id="level" class="panel-value">1</div>
             </div>
             
-            <!-- 已消除行數 -->
-            <div class="panel-box">
+            <!-- 第一層：已消除行數（按H時隱藏） -->
+            <div class="panel-box primary-panel" id="lines-panel">
                 <div class="panel-label">Lines</div>
                 <div id="lines" class="panel-value">0</div>
             </div>
             
-            <!-- 當前下落速度（已隱藏但保留功能） -->
-            <div class="panel-box hidden-panel">
+            <!-- 第二層：當前下落速度（按H時顯示） -->
+            <div class="panel-box secondary-panel" id="speed-panel">
                 <div class="panel-label">Speed</div>
                 <div id="speed" class="panel-value">700ms</div>
             </div>
             
-            <!-- 已放置方塊數量（已隱藏但保留功能） -->
-            <div class="panel-box hidden-panel">
+            <!-- 第二層：已放置方塊數量（按H時顯示） -->
+            <div class="panel-box secondary-panel" id="pieces-count-panel">
                 <div class="panel-label">Pieces</div>
                 <div id="pieces-count" class="panel-value">0</div>
             </div>
             
-            <!-- 暫停/繼續按鈕 -->
-            <div class="panel-box clickable" onclick="togglePause()">
-                <div class="panel-label">Pause</div>
-                <div id="pause-status" class="panel-value">❚❚</div>
-            </div>
-            
-            <!-- 特殊方塊暫停開關（已隱藏但保留功能） -->
-            <div class="panel-box hidden-panel">
+            <!-- 第二層：特殊方塊暫停開關（按H時顯示） -->
+            <div class="panel-box secondary-panel clickable" id="special-pause-panel" onclick="toggleSpecialPause()">
                 <div class="panel-label">Special Pause</div>
                 <div id="special-pause-status" class="panel-value">OFF</div>
+            </div>
+            
+            <!-- 暫停/繼續按鈕（始終顯示） -->
+            <div class="panel-box primary-panel clickable" onclick="togglePause()" id="pause-panel">
+                <div class="panel-label">Pause</div>
+                <div id="pause-status" class="panel-value">❚❚</div>
             </div>
         </div>
         
@@ -1066,6 +1094,9 @@
 
         let tripleClickCount = 0;           // 三擊計數器
         let tripleClickTimer = null;        // 三擊定時器
+
+        // 新增：面板顯示狀態變數 - 追蹤當前顯示的是哪一層面板
+        let isSecondaryPanelActive = false; // 第二層面板是否激活的標誌（false表示顯示第一層，true表示顯示第二層）
 
         // 每級加速量（每升一級減少5毫秒）
         const levelSpeedIncrease = 5;
@@ -1793,6 +1824,60 @@
         }
 
         // ====================================================
+        // 修改：兩層面板切換功能
+        // ====================================================
+        
+        // 切換面板顯示層級（第一層和第二層之間切換）
+        function togglePanelLayers() {
+            // 切換顯示狀態標誌
+            isSecondaryPanelActive = !isSecondaryPanelActive;
+            
+            // 獲取所有第一層面板元素
+            const primaryPanels = document.querySelectorAll('.primary-panel');
+            // 獲取所有第二層面板元素
+            const secondaryPanels = document.querySelectorAll('.secondary-panel');
+            
+            if (isSecondaryPanelActive) {
+                // 顯示第二層面板，隱藏第一層面板（除了始終顯示的面板）
+                primaryPanels.forEach(panel => {
+                    // 檢查是否是需要始終顯示的面板（下一個方塊、最高分、暫停按鈕）
+                    if (panel.id !== 'next-piece-panel' && 
+                        panel.id !== 'highscore-panel' && 
+                        panel.id !== 'pause-panel') {
+                        panel.classList.add('hidden'); // 隱藏非核心的第一層面板
+                    }
+                });
+                
+                // 顯示第二層面板
+                secondaryPanels.forEach(panel => {
+                    panel.classList.add('visible');
+                });
+                
+                console.log("已切換到第二層面板（顯示速度、方塊計數等）");
+            } else {
+                // 顯示第一層面板，隱藏第二層面板
+                primaryPanels.forEach(panel => {
+                    panel.classList.remove('hidden'); // 顯示所有第一層面板
+                });
+                
+                // 隱藏第二層面板
+                secondaryPanels.forEach(panel => {
+                    panel.classList.remove('visible');
+                });
+                
+                console.log("已切換到第一層面板（顯示模式、分數、行數等）");
+            }
+            
+            // 添加視覺反饋（使用高分面板的動畫效果）
+            const highscorePanel = document.getElementById('highscore-panel');
+            highscorePanel.classList.add('highscore-triple-click');
+            
+            setTimeout(() => {
+                highscorePanel.classList.remove('highscore-triple-click');
+            }, 500);
+        }
+
+        // ====================================================
         // 遊戲數據結構函數
         // ====================================================
         
@@ -2505,6 +2590,19 @@
             isAutoPlay = false;
             aiIndicator.classList.remove('active');
             
+            // 重置面板顯示狀態為第一層
+            isSecondaryPanelActive = false;
+            const primaryPanels = document.querySelectorAll('.primary-panel');
+            const secondaryPanels = document.querySelectorAll('.secondary-panel');
+            
+            primaryPanels.forEach(panel => {
+                panel.classList.remove('hidden');
+            });
+            
+            secondaryPanels.forEach(panel => {
+                panel.classList.remove('visible');
+            });
+            
             // 隱藏遊戲畫面，顯示主菜單
             document.getElementById('game-container').style.display = 'none';
             document.getElementById('controls').style.display = 'none';
@@ -2545,6 +2643,19 @@
             // 重置託管狀態
             isAutoPlay = false;
             aiIndicator.classList.remove('active');
+            
+            // 重置面板顯示狀態為第一層
+            isSecondaryPanelActive = false;
+            const primaryPanels = document.querySelectorAll('.primary-panel');
+            const secondaryPanels = document.querySelectorAll('.secondary-panel');
+            
+            primaryPanels.forEach(panel => {
+                panel.classList.remove('hidden');
+            });
+            
+            secondaryPanels.forEach(panel => {
+                panel.classList.remove('visible');
+            });
             
             // 更新顯示等級（基於入門模式）
             updateDisplayLevel();
@@ -2719,6 +2830,13 @@
                 return;
             }
             
+            // H鍵處理：切換面板層級顯示（第一層和第二層之間切換）
+            if (event.keyCode === 72) { // H鍵
+                togglePanelLayers();
+                event.preventDefault();
+                return;
+            }
+            
             // 特殊方塊暫停狀態下的處理
             if (isSpecialPiecePaused) {
                 // 在特殊方塊暫停狀態下，任意鍵都可以恢復遊戲
@@ -2845,6 +2963,9 @@
 
         // 計算並顯示最高等級（基於入門模式）
         console.log("最高等級（基於入門模式）:", getMaxLevel());
+        console.log("按H鍵可在兩層面板之間切換：");
+        console.log("第一層：模式、分數、行數（默認顯示）");
+        console.log("第二層：速度、方塊計數、特殊方塊暫停開關");
     </script>
 </body>
 </html>
