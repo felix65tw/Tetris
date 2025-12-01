@@ -32,7 +32,7 @@
         }
 
         #game-container {
-            display: flex;
+            display: none; /* 初始隱藏 */
             gap: 10px;
             margin-bottom: 10px;
             max-height: 80vh;
@@ -100,9 +100,9 @@
         }
 
         #controls {
+            display: none; /* 初始隱藏 */
             width: 100%;
             max-width: 420px;
-            display: flex;
             justify-content: space-between;
             padding: 10px 2px;
             box-sizing: border-box;
@@ -974,6 +974,180 @@
             return Math.floor((beginnerBaseSpeed - minSpeed) / levelSpeedIncrease) + 1;
         }
 
+        // 改進的14-bag 隨機生成器 - 大幅降低重複率
+        class RandomBag {
+            constructor() {
+                this.bag = [];
+                this.history = []; // 記錄最近出現的方塊
+                this.maxHistorySize = 5; // 記錄最近5個方塊
+                this.refillBag();
+            }
+            
+            refillBag() {
+                // 創建包含兩組所有普通方塊的新袋子（14個方塊）
+                const newBag = [...pieces, ...pieces];
+                
+                // 改進的洗牌算法 - 確保不會有連續重複
+                for (let i = newBag.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [newBag[i], newBag[j]] = [newBag[j], newBag[i]];
+                    
+                    // 檢查並避免連續重複
+                    if (i > 0 && newBag[i] === newBag[i-1]) {
+                        // 如果與前一個相同，則與隨機位置交換
+                        const k = Math.floor(Math.random() * i);
+                        [newBag[i], newBag[k]] = [newBag[k], newBag[i]];
+                    }
+                }
+                
+                // 如果袋子開頭與歷史記錄中的最後一個相同，則調整
+                if (this.history.length > 0 && newBag[0] === this.history[this.history.length-1]) {
+                    // 找到第一個不同的方塊並放到開頭
+                    for (let i = 1; i < newBag.length; i++) {
+                        if (newBag[i] !== this.history[this.history.length-1]) {
+                            [newBag[0], newBag[i]] = [newBag[i], newBag[0]];
+                            break;
+                        }
+                    }
+                }
+                
+                this.bag = [...this.bag, ...newBag];
+            }
+            
+            getNext() {
+                if (this.bag.length <= 14) {
+                    this.refillBag();
+                }
+                
+                const nextPiece = this.bag.shift();
+                
+                // 更新歷史記錄
+                this.history.push(nextPiece);
+                if (this.history.length > this.maxHistorySize) {
+                    this.history.shift();
+                }
+                
+                return nextPiece;
+            }
+            
+            // 預覽下一個方塊（不移除）
+            peekNext() {
+                if (this.bag.length <= 14) {
+                    this.refillBag();
+                }
+                return this.bag[0];
+            }
+        }
+
+        // 初始化隨機生成器
+        let randomBag = new RandomBag();
+
+        // 特殊方塊的隨機生成器（同樣使用改進算法）
+        class SpecialRandomBag {
+            constructor() {
+                this.bag = [];
+                this.history = [];
+                this.maxHistorySize = 2;
+                this.refillBag();
+            }
+            
+            refillBag() {
+                // 創建包含兩組所有特殊方塊的新袋子
+                const newBag = [...specialPieces, ...specialPieces];
+                
+                // 改進的洗牌算法
+                for (let i = newBag.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [newBag[i], newBag[j]] = [newBag[j], newBag[i]];
+                    
+                    // 檢查並避免連續重複
+                    if (i > 0 && newBag[i] === newBag[i-1]) {
+                        const k = Math.floor(Math.random() * i);
+                        [newBag[i], newBag[k]] = [newBag[k], newBag[i]];
+                    }
+                }
+                
+                // 如果袋子開頭與歷史記錄中的最後一個相同，則調整
+                if (this.history.length > 0 && newBag[0] === this.history[this.history.length-1]) {
+                    for (let i = 1; i < newBag.length; i++) {
+                        if (newBag[i] !== this.history[this.history.length-1]) {
+                            [newBag[0], newBag[i]] = [newBag[i], newBag[0]];
+                            break;
+                        }
+                    }
+                }
+                
+                this.bag = [...this.bag, ...newBag];
+            }
+            
+            getNext() {
+                if (this.bag.length === 0) {
+                    this.refillBag();
+                }
+                
+                const nextPiece = this.bag.shift();
+                
+                // 更新歷史記錄
+                this.history.push(nextPiece);
+                if (this.history.length > this.maxHistorySize) {
+                    this.history.shift();
+                }
+                
+                return nextPiece;
+            }
+        }
+
+        // 初始化特殊方塊隨機生成器
+        let specialRandomBag = new SpecialRandomBag();
+
+        // 在入門和簡單模式下降低S和Z方塊出現機率的函數 - 使用改進的加權隨機
+        function getRandomPieceType() {
+            // 如果不是入門或簡單模式，或者已經超過100個方塊，使用正常的14-bag
+            if ((gameMode !== 'beginner' && gameMode !== 'easy') || piecesCount >= 100) {
+                return randomBag.getNext();
+            }
+            
+            // 在入門和簡單模式的前100個方塊中，使用改進的加權隨機降低S和Z的出現機率
+            const weights = {
+                'I': 1.3,  // I型方塊權重更高
+                'L': 1.2,
+                'J': 1.2,
+                'O': 1.2,
+                'T': 1.2,
+                'S': 0.3,  // S和Z權重更低
+                'Z': 0.3
+            };
+            
+            // 計算總權重
+            let totalWeight = 0;
+            for (const piece of pieces) {
+                totalWeight += weights[piece];
+            }
+            
+            // 生成隨機數
+            let random = Math.random() * totalWeight;
+            let weightSum = 0;
+            
+            // 根據權重選擇方塊
+            for (const piece of pieces) {
+                weightSum += weights[piece];
+                if (random <= weightSum) {
+                    // 檢查是否與最近出現的方塊重複
+                    if (randomBag.history.includes(piece)) {
+                        // 如果重複，有50%機率重新選擇
+                        if (Math.random() < 0.5) {
+                            // 重新選擇
+                            return getRandomPieceType();
+                        }
+                    }
+                    return piece;
+                }
+            }
+            
+            // 默認返回第一個方塊
+            return pieces[0];
+        }
+
         class TetrisIntelligence {
             constructor() {
                 this.weights = {
@@ -1404,18 +1578,6 @@
             }
             
             return matrix;
-        }
-
-        // 在入門和簡單模式下降低S和Z方塊出現機率的函數
-        function getRandomPieceType() {
-            // 如果不是入門或簡單模式，或者已經超過100個方塊，正常隨機
-            if ((gameMode !== 'beginner' && gameMode !== 'easy') || piecesCount >= 100) {
-                return pieces[Math.floor(Math.random() * pieces.length)];
-            }
-            
-            // 在入門和簡單模式的前100個方塊中，降低S和Z的出現機率
-            const weightedPieces = 'IILLJJOOTT'; // 增加其他方塊的權重，減少S和Z
-            return weightedPieces[Math.floor(Math.random() * weightedPieces.length)];
         }
 
         const arena = createMatrix(COLS, ROWS);
@@ -1849,10 +2011,9 @@
             // 生成新的下一個方塊
             let nextPieceType;
             if (piecesCount + 1 >= nextSpecialPiece) {
-                // 隨機從三種特殊方塊中選擇一種
-                const randomSpecialPiece = specialPieces[Math.floor(Math.random() * specialPieces.length)];
-                nextPieceType = randomSpecialPiece;
-                player.next = createRandomColorSpecialPiece(randomSpecialPiece);
+                // 使用特殊方塊隨機生成器
+                nextPieceType = specialRandomBag.getNext();
+                player.next = createRandomColorSpecialPiece(nextPieceType);
                 nextSpecialPiece += 50;
             } else {
                 // 使用新的隨機方塊生成函數
@@ -2058,7 +2219,9 @@
             isAutoPlay = false;
             aiIndicator.classList.remove('active');
             
-            // 顯示開始菜單
+            // 隱藏遊戲畫面，顯示主菜單
+            document.getElementById('game-container').style.display = 'none';
+            document.getElementById('controls').style.display = 'none';
             document.getElementById('overlay').style.display = 'flex';
             isPaused = true;
         }
@@ -2071,6 +2234,10 @@
             
             // 停止慶祝效果
             stopCompletionEffects();
+            
+            // 重新初始化隨機生成器
+            randomBag = new RandomBag();
+            specialRandomBag = new SpecialRandomBag();
             
             // 重置遊戲狀態
             isGameOver = false;
@@ -2095,6 +2262,10 @@
             
             // 更新顯示等級（基於入門模式）
             updateDisplayLevel();
+            
+            // 顯示遊戲畫面
+            document.getElementById('game-container').style.display = 'flex';
+            document.getElementById('controls').style.display = 'flex';
             
             // 開始新遊戲
             playerReset();
@@ -2191,10 +2362,19 @@
 
         // 開始遊戲
         function startGame() {
+            // 重新初始化隨機生成器，確保每次遊戲開始都是新的隨機序列
+            randomBag = new RandomBag();
+            specialRandomBag = new SpecialRandomBag();
+            
             // 初始化音效管理器
             soundManager.init();
             
             document.getElementById('overlay').style.display = 'none';
+            
+            // 顯示遊戲畫面
+            document.getElementById('game-container').style.display = 'flex';
+            document.getElementById('controls').style.display = 'flex';
+            
             if(isGameOver || isGameCompleted) {
                 isGameOver = false;
                 isGameCompleted = false;
@@ -2206,6 +2386,7 @@
             
             isPaused = false;
             pauseText.style.display = 'none'; // 確保暫停文字隱藏
+            lastTime = performance.now();
             update();
         }
 
