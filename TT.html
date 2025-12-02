@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>俄羅斯方塊 - 智能AI版</title>
+    <title>俄羅斯方塊</title>
     <style>
         :root {
             --bg-color: #051025;
@@ -26,9 +26,9 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
             overflow: hidden;
-            touch-action: none;
+            touch-action: manipulation;
         }
 
         #game-container {
@@ -171,7 +171,7 @@
         }
 
         #overlay {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
@@ -182,6 +182,8 @@
             align-items: center;
             justify-content: center;
             z-index: 20;
+            padding: 20px;
+            box-sizing: border-box;
         }
 
         #start-title {
@@ -189,13 +191,14 @@
             color: #4dc9cf;
             text-shadow: 0 0 10px #1a9ba0;
             margin-bottom: 20px;
+            text-align: center;
         }
 
         #level-selection {
             display: flex;
             flex-direction: column;
             gap: 10px;
-            width: 80%;
+            width: 100%;
             max-width: 300px;
         }
 
@@ -230,7 +233,7 @@
         }
 
         #game-over-overlay {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
@@ -241,13 +244,16 @@
             align-items: center;
             justify-content: center;
             z-index: 30;
+            padding: 20px;
+            box-sizing: border-box;
         }
 
         #game-over-title {
-            font-size: 48px;
+            font-size: 36px;
             color: #ff4757;
             text-shadow: 0 0 10px #ff4757;
             margin-bottom: 20px;
+            text-align: center;
         }
 
         #final-stats {
@@ -257,11 +263,13 @@
             padding: 20px;
             margin-bottom: 20px;
             text-align: center;
+            width: 100%;
+            max-width: 300px;
         }
 
         .stat-item {
             margin: 10px 0;
-            font-size: 18px;
+            font-size: 16px;
         }
 
         .stat-value {
@@ -275,7 +283,7 @@
             border: none;
             border-radius: 8px;
             color: white;
-            font-size: 18px;
+            font-size: 16px;
             cursor: pointer;
             transition: all 0.3s;
         }
@@ -291,7 +299,7 @@
             border: none;
             border-radius: 8px;
             color: white;
-            font-size: 18px;
+            font-size: 16px;
             cursor: pointer;
             transition: all 0.3s;
             margin-top: 10px;
@@ -369,45 +377,139 @@
             display: none;
         }
 
+        /* 通關畫面 - 重新設計不滾動版本 */
         #completion-overlay {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.9);
+            background: rgba(0,0,0,0.95);
             display: none;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             z-index: 50;
+            padding: 15px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .completion-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 350px;
+            max-height: 90vh;
         }
 
         #completion-title {
-            font-size: 60px;
+            font-size: 28px;
             color: #ffd700;
-            text-shadow: 0 0 20px #ffd700, 0 0 30px #ffd700;
-            margin-bottom: 20px;
+            text-shadow: 0 0 8px #ffd700;
+            margin: 0 0 8px 0;
             animation: completionPulse 2s infinite;
+            text-align: center;
+            line-height: 1.2;
+            width: 100%;
         }
 
         @keyframes completionPulse {
             0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.1); opacity: 0.9; }
+            50% { transform: scale(1.03); opacity: 0.9; }
             100% { transform: scale(1); opacity: 1; }
         }
 
         #completion-subtitle {
-            font-size: 24px;
+            font-size: 16px;
             color: #4dc9cf;
-            margin-bottom: 30px;
+            margin-bottom: 15px;
             text-align: center;
+            width: 100%;
+        }
+
+        #completion-stats {
+            background: rgba(0, 30, 70, 0.95);
+            border: 2px solid #369;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 0 0 15px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .stat-item {
+            margin: 8px 0;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stat-label {
+            color: #8af;
+            font-weight: normal;
+            text-align: left;
+            flex: 1;
+        }
+
+        .stat-value {
+            color: #4dc9cf;
+            font-weight: bold;
+            font-family: 'Courier New', Courier, monospace;
+            text-align: right;
+            min-width: 60px;
+            margin-left: 10px;
+        }
+
+        #completion-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+            margin-top: 5px;
+        }
+
+        .completion-btn {
+            padding: 12px 18px;
+            background: linear-gradient(145deg, #1a9ba0, #0e5a5e);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            width: 100%;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        .completion-btn:hover {
+            background: linear-gradient(145deg, #4dc9cf, #1a9ba0);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.4);
+        }
+
+        .completion-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        #back-to-menu-btn {
+            background: linear-gradient(145deg, #4a5568, #2d3748);
+        }
+
+        #back-to-menu-btn:hover {
+            background: linear-gradient(145deg, #718096, #4a5568);
         }
 
         .firework {
             position: absolute;
-            width: 10px;
-            height: 10px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
             pointer-events: none;
             animation: fireworkExplode 1.5s forwards;
@@ -420,8 +522,8 @@
 
         .confetti {
             position: absolute;
-            width: 15px;
-            height: 15px;
+            width: 12px;
+            height: 12px;
             pointer-events: none;
             animation: confettiFall 5s linear forwards;
             top: -20px;
@@ -437,11 +539,11 @@
         }
 
         @keyframes flash {
-            0% { color: #ffd700; text-shadow: 0 0 10px #ffd700; }
-            25% { color: #ff6b6b; text-shadow: 0 0 10px #ff6b6b; }
-            50% { color: #4ecdc4; text-shadow: 0 0 10px #4ecdc4; }
-            75% { color: #ff9ff3; text-shadow: 0 0 10px #ff9ff3; }
-            100% { color: #feca57; text-shadow: 0 0 10px #feca57; }
+            0% { color: #ffd700; text-shadow: 0 0 8px #ffd700; }
+            25% { color: #ff6b6b; text-shadow: 0 0 8px #ff6b6b; }
+            50% { color: #4ecdc4; text-shadow: 0 0 8px #4ecdc4; }
+            75% { color: #ff9ff3; text-shadow: 0 0 8px #ff9ff3; }
+            100% { color: #feca57; text-shadow: 0 0 8px #feca57; }
         }
 
         .primary-panel {
@@ -472,7 +574,13 @@
             max-height: 0;
         }
 
+        /* 移動設備適配 */
         @media (max-width: 767px) {
+            body {
+                justify-content: flex-start;
+                padding-top: 10px;
+            }
+            
             #game-container {
                 transform: scale(0.85);
                 transform-origin: top center;
@@ -490,18 +598,19 @@
             }
             
             .btn {
-                width: 75px;
-                height: 75px;
-                font-size: 32px;
+                width: 70px;
+                height: 70px;
+                font-size: 30px;
                 border-radius: 18px;
-                min-width: 75px;
+                min-width: 70px;
                 flex: 1;
                 max-width: 80px;
             }
             
             #overlay, #game-over-overlay, #completion-overlay {
-                transform: scale(0.85);
+                transform: scale(1);
                 transform-origin: center center;
+                justify-content: center;
             }
             
             #ai-indicator {
@@ -531,12 +640,44 @@
                 font-size: 36px;
             }
             
+            /* 通關畫面移動設備適配 */
+            .completion-content {
+                max-width: 320px;
+                max-height: 85vh;
+            }
+            
             #completion-title {
-                font-size: 40px;
+                font-size: 24px;
+                margin-bottom: 6px;
             }
             
             #completion-subtitle {
-                font-size: 18px;
+                font-size: 14px;
+                margin-bottom: 12px;
+            }
+            
+            #completion-stats {
+                padding: 12px;
+                margin-bottom: 12px;
+            }
+            
+            .stat-item {
+                font-size: 13px;
+                margin: 6px 0;
+            }
+            
+            .stat-value {
+                min-width: 50px;
+                font-size: 14px;
+            }
+            
+            #completion-buttons {
+                gap: 8px;
+            }
+            
+            .completion-btn {
+                padding: 10px 16px;
+                font-size: 14px;
             }
             
             #controls {
@@ -544,19 +685,8 @@
                 flex-wrap: nowrap;
             }
             
+            /* 小屏幕手機 */
             @media (max-width: 480px) {
-                .btn {
-                    width: 70px;
-                    height: 70px;
-                    font-size: 30px;
-                }
-                
-                #controls {
-                    gap: 5px;
-                }
-            }
-            
-            @media (max-width: 380px) {
                 .btn {
                     width: 65px;
                     height: 65px;
@@ -564,21 +694,225 @@
                 }
                 
                 #controls {
-                    gap: 4px;
+                    gap: 6px;
+                }
+                
+                .completion-content {
+                    max-width: 300px;
+                }
+                
+                #completion-title {
+                    font-size: 22px;
+                }
+                
+                #completion-subtitle {
+                    font-size: 13px;
                 }
             }
             
-            .btn::after {
-                content: '';
-                position: absolute;
-                top: -10px;
-                left: -10px;
-                right: -10px;
-                bottom: -10px;
-                z-index: 1;
+            /* 非常小的屏幕 */
+            @media (max-width: 380px) {
+                .btn {
+                    width: 60px;
+                    height: 60px;
+                    font-size: 26px;
+                }
+                
+                #controls {
+                    gap: 5px;
+                }
+                
+                .completion-content {
+                    max-width: 280px;
+                }
+                
+                #completion-title {
+                    font-size: 20px;
+                }
+                
+                #completion-subtitle {
+                    font-size: 12px;
+                }
+                
+                #completion-stats {
+                    padding: 10px;
+                }
+                
+                .stat-item {
+                    font-size: 12px;
+                }
+            }
+            
+            /* 高度較小的屏幕 */
+            @media (max-height: 700px) {
+                .completion-content {
+                    max-height: 80vh;
+                }
+                
+                #completion-title {
+                    font-size: 20px;
+                    margin-bottom: 5px;
+                }
+                
+                #completion-subtitle {
+                    font-size: 12px;
+                    margin-bottom: 10px;
+                }
+                
+                #completion-stats {
+                    padding: 10px;
+                    margin-bottom: 10px;
+                }
+                
+                .stat-item {
+                    margin: 5px 0;
+                    font-size: 12px;
+                }
+                
+                .completion-btn {
+                    padding: 8px 14px;
+                    font-size: 13px;
+                }
+            }
+            
+            @media (max-height: 600px) {
+                .completion-content {
+                    max-height: 75vh;
+                }
+                
+                #completion-title {
+                    font-size: 18px;
+                }
+                
+                #completion-subtitle {
+                    font-size: 11px;
+                    margin-bottom: 8px;
+                }
+                
+                #completion-stats {
+                    padding: 8px;
+                    margin-bottom: 8px;
+                }
+                
+                .stat-item {
+                    margin: 4px 0;
+                    font-size: 11px;
+                }
+                
+                #completion-buttons {
+                    gap: 6px;
+                }
+                
+                .completion-btn {
+                    padding: 7px 12px;
+                    font-size: 12px;
+                }
+            }
+            
+            @media (max-height: 500px) {
+                .completion-content {
+                    max-height: 70vh;
+                }
+                
+                #completion-title {
+                    font-size: 16px;
+                    margin-bottom: 4px;
+                }
+                
+                #completion-subtitle {
+                    font-size: 10px;
+                    margin-bottom: 6px;
+                }
+                
+                #completion-stats {
+                    padding: 6px;
+                    margin-bottom: 6px;
+                }
+                
+                .stat-item {
+                    margin: 3px 0;
+                    font-size: 10px;
+                }
+                
+                .stat-value {
+                    min-width: 40px;
+                    font-size: 11px;
+                }
+                
+                #completion-buttons {
+                    gap: 5px;
+                }
+                
+                .completion-btn {
+                    padding: 6px 10px;
+                    font-size: 11px;
+                }
+            }
+            
+            /* 橫屏模式 */
+            @media (orientation: landscape) and (max-height: 500px) {
+                .completion-content {
+                    flex-direction: row;
+                    flex-wrap: wrap;
+                    justify-content: center;
+                    align-items: center;
+                    max-width: 90%;
+                }
+                
+                #completion-title {
+                    width: 100%;
+                    font-size: 18px;
+                    margin-bottom: 5px;
+                }
+                
+                #completion-subtitle {
+                    width: 100%;
+                    font-size: 12px;
+                    margin-bottom: 10px;
+                }
+                
+                #completion-stats {
+                    width: 60%;
+                    margin-right: 10px;
+                    margin-bottom: 0;
+                }
+                
+                #completion-buttons {
+                    width: 35%;
+                    margin-top: 0;
+                }
+            }
+            
+            @media (orientation: landscape) and (max-height: 400px) {
+                .completion-content {
+                    max-height: 85vh;
+                }
+                
+                #completion-title {
+                    font-size: 16px;
+                }
+                
+                #completion-subtitle {
+                    font-size: 11px;
+                    margin-bottom: 8px;
+                }
+                
+                #completion-stats {
+                    padding: 8px;
+                }
+                
+                .stat-item {
+                    font-size: 10px;
+                }
+                
+                .completion-btn {
+                    padding: 6px 10px;
+                    font-size: 11px;
+                }
             }
         }
 
+        /* 桌面設備 */
         @media (min-width: 768px) {
             #game-container, #controls, #overlay, #game-over-overlay, #ai-indicator, #completion-overlay {
                 transform: scale(1) !important;
@@ -593,6 +927,54 @@
             #sidebar {
                 width: 90px;
             }
+            
+            .completion-content {
+                max-width: 400px;
+            }
+            
+            #completion-title {
+                font-size: 32px;
+                margin-bottom: 10px;
+            }
+            
+            #completion-subtitle {
+                font-size: 18px;
+                margin-bottom: 20px;
+            }
+            
+            #completion-stats {
+                padding: 20px;
+                margin-bottom: 20px;
+            }
+            
+            .stat-item {
+                font-size: 16px;
+                margin: 10px 0;
+            }
+            
+            .stat-value {
+                min-width: 70px;
+            }
+            
+            #completion-buttons {
+                gap: 12px;
+            }
+            
+            .completion-btn {
+                padding: 14px 20px;
+                font-size: 16px;
+            }
+        }
+
+        /* 按鈕通用適配 */
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            z-index: 1;
         }
     </style>
 </head>
@@ -668,15 +1050,34 @@
         </div>
         
         <div id="completion-overlay">
-            <h1 id="completion-title" class="flashing-text">恭喜通關！</h1>
-            <div id="completion-subtitle">您已達到最高等級！</div>
-            <div id="final-stats">
-                <div class="stat-item">最終分數: <span id="completion-score" class="stat-value">0</span></div>
-                <div class="stat-item">消除行數: <span id="completion-lines" class="stat-value">0</span></div>
-                <div class="stat-item">方塊數量: <span id="completion-pieces" class="stat-value">0</span></div>
+            <div class="completion-content">
+                <h1 id="completion-title" class="flashing-text">恭喜通關！</h1>
+                <div id="completion-subtitle">您已達到最高等級！</div>
+                
+                <div id="completion-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">最終等級：</span>
+                        <span id="completion-level" class="stat-value">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">消除總行數：</span>
+                        <span id="completion-lines" class="stat-value">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">最終分數：</span>
+                        <span id="completion-score" class="stat-value">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">方塊數量：</span>
+                        <span id="completion-pieces" class="stat-value">0</span>
+                    </div>
+                </div>
+                
+                <div id="completion-buttons">
+                    <button class="completion-btn" onclick="restartGame()">重新開始</button>
+                    <button id="back-to-menu-btn" class="completion-btn" onclick="backToMenu()">返回主菜單</button>
+                </div>
             </div>
-            <button id="restart-btn" onclick="restartGame()">重新開始</button>
-            <button id="back-to-menu-btn" onclick="backToMenu()">返回主菜單</button>
         </div>
     </div>
 
@@ -968,7 +1369,7 @@
 
         let isSecondaryPanelActive = false;
 
-        const levelSpeedIncrease = 5;
+        const levelSpeedIncrease = 2;
 
         const gameModes = {
             'beginner': {
@@ -1558,7 +1959,7 @@
         let currentAiStep = 0;
         let aiMoveTimer = null;
         let aiDropTimer = null;
-        let aiDropSpeed = 30;
+        let aiDropSpeed = 50;
 
         // 執行AI移動
         function executeAiMove() {
@@ -2096,7 +2497,7 @@
         }
 
         function updateLevelAndSpeed() {
-            const newLevel = Math.floor(totalLinesCleared / 10) + 1;
+            const newLevel = Math.floor(totalLinesCleared / 5) + 1;
             
             if (newLevel > level) {
                 level = newLevel;
@@ -2245,15 +2646,23 @@
             stopAutoPlay();
             aiIndicator.classList.remove('active');
             
+            // 獲取最終的顯示等級
+            const finalDisplayLevel = getDisplayLevel();
+            
+            // 更新通關畫面數據
             document.getElementById('completion-score').innerText = player.score;
             document.getElementById('completion-lines').innerText = totalLinesCleared;
+            document.getElementById('completion-level').innerText = finalDisplayLevel;
             document.getElementById('completion-pieces').innerText = piecesCount;
             
+            // 隱藏其他畫面
             document.getElementById('game-over-overlay').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
             
+            // 顯示通關畫面
             document.getElementById('completion-overlay').style.display = 'flex';
             
+            // 開始特效
             startCompletionEffects();
         }
 
