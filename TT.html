@@ -1171,9 +1171,9 @@
         // ====================================================
         // 改進的AI算法（基於原始遊戲的AI）
         // ====================================================
-        class TetrisAI {
+        class ProfessionalTetrisAI {
             constructor() {
-                // 原始遊戲的權重參數
+                // 使用原始遊戲的權重參數（經過遺傳算法優化）
                 this.weights = {
                     heightWeight: 0.510066,
                     linesWeight: 0.760666,
@@ -1183,97 +1183,221 @@
             }
             
             // 主AI函數 - 尋找最佳位置
-            best(grid, workingPieces) {
-                return this._best(grid, workingPieces, 0).piece;
-            }
-            
-            // 遞迴搜索最佳位置
-            _best(grid, workingPieces, workingPieceIndex) {
-                let best = null;
-                let bestScore = null;
-                const workingPiece = workingPieces[workingPieceIndex];
+            findBestMove(currentGrid, currentPiece, nextPiece) {
+                let bestScore = -Infinity;
+                let bestMove = null;
                 
-                // 嘗試所有旋轉（0-3次）
-                for (let rotation = 0; rotation < 4; rotation++) {
-                    const _piece = this.copyPiece(workingPiece);
+                // 複製當前網格
+                const testGrid = this.copyGrid(currentGrid);
+                
+                // 獲取所有可能的移動
+                const allMoves = this.getAllPossibleMoves(testGrid, currentPiece);
+                
+                // 嘗試每個可能的移動
+                for (const move of allMoves) {
+                    // 模擬放置當前方塊
+                    const simulatedGrid = this.copyGrid(currentGrid);
+                    const pieceCopy = this.copyPiece(currentPiece);
                     
-                    // 應用旋轉
-                    for (let i = 0; i < rotation; i++) {
-                        this.rotatePiece(_piece);
+                    // 應用移動
+                    for (let i = 0; i < move.rotations; i++) {
+                        this.rotatePiece(pieceCopy);
+                    }
+                    pieceCopy.pos.x = move.x;
+                    
+                    // 下落到底部
+                    while (!this.checkCollision(simulatedGrid, pieceCopy)) {
+                        pieceCopy.pos.y++;
+                    }
+                    pieceCopy.pos.y--;
+                    
+                    // 放置方塊
+                    this.placePiece(simulatedGrid, pieceCopy);
+                    
+                    // 清除完整行
+                    const linesCleared = this.clearLines(simulatedGrid);
+                    
+                    // 評估當前局面
+                    let score = this.evaluateBoard(simulatedGrid);
+                    
+                    // 考慮下一個方塊（一層前瞻）
+                    if (nextPiece) {
+                        const nextPieceCopy = {
+                            matrix: nextPiece,
+                            pos: { x: 0, y: 0 }
+                        };
+                        
+                        // 找到下一個方塊的最佳位置
+                        const nextBestMove = this.findBestMoveForSinglePiece(simulatedGrid, nextPieceCopy);
+                        
+                        // 模擬放置下一個方塊
+                        const nextSimulatedGrid = this.copyGrid(simulatedGrid);
+                        const nextPieceFinal = {
+                            matrix: nextPiece,
+                            pos: { x: nextBestMove.x, y: 0 }
+                        };
+                        
+                        // 應用旋轉
+                        for (let i = 0; i < nextBestMove.rotations; i++) {
+                            this.rotatePiece(nextPieceFinal);
+                        }
+                        
+                        // 下落到底部
+                        while (!this.checkCollision(nextSimulatedGrid, nextPieceFinal)) {
+                            nextPieceFinal.pos.y++;
+                        }
+                        nextPieceFinal.pos.y--;
+                        
+                        // 放置方塊
+                        this.placePiece(nextSimulatedGrid, nextPieceFinal);
+                        
+                        // 清除完整行
+                        this.clearLines(nextSimulatedGrid);
+                        
+                        // 評估最終局面
+                        const finalScore = this.evaluateBoard(nextSimulatedGrid);
+                        
+                        // 結合兩個分數（當前佔70%，下一個佔30%）
+                        score = score * 0.7 + finalScore * 0.3;
                     }
                     
-                    // 移動到最左邊
-                    while (this.canMoveLeft(_piece, grid)) {
-                        _piece.pos.x--;
+                    // 考慮消除的行數獎勵
+                    score += linesCleared * 100;
+                    
+                    // 更新最佳移動
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMove = move;
+                    }
+                }
+                
+                return bestMove;
+            }
+            
+            // 為單個方塊找到最佳位置（不考慮下一個方塊）
+            findBestMoveForSinglePiece(grid, piece) {
+                let bestScore = -Infinity;
+                let bestMove = { rotations: 0, x: 0 };
+                
+                // 嘗試所有旋轉（0-3次）
+                for (let rotations = 0; rotations < 4; rotations++) {
+                    const testPiece = this.copyPiece(piece);
+                    
+                    // 應用旋轉
+                    for (let i = 0; i < rotations; i++) {
+                        this.rotatePiece(testPiece);
                     }
                     
                     // 嘗試所有水平位置
-                    while (this.isValidPosition(_piece, grid)) {
-                        const _pieceSet = this.copyPiece(_piece);
+                    for (let x = -2; x < COLS + 2; x++) {
+                        testPiece.pos.x = x;
+                        testPiece.pos.y = 0;
+                        
+                        // 檢查位置是否有效
+                        if (this.checkCollision(grid, testPiece)) {
+                            continue;
+                        }
                         
                         // 下落到底部
-                        while (this.canMoveDown(_pieceSet, grid)) {
-                            _pieceSet.pos.y++;
-                        }
+                        const finalY = this.dropPiece(grid, testPiece);
+                        testPiece.pos.y = finalY;
                         
-                        const _grid = this.copyGrid(grid);
-                        this.placePiece(_grid, _pieceSet);
+                        // 模擬放置
+                        const simulatedGrid = this.copyGrid(grid);
+                        this.placePiece(simulatedGrid, testPiece);
                         
-                        let score = null;
-                        if (workingPieceIndex === workingPieces.length - 1) {
-                            // 最後一個方塊，計算分數
-                            score = -this.weights.heightWeight * this.aggregateHeight(_grid) + 
-                                    this.weights.linesWeight * this.lines(_grid) - 
-                                    this.weights.holesWeight * this.holes(_grid) - 
-                                    this.weights.bumpinessWeight * this.bumpiness(_grid);
-                        } else {
-                            // 遞迴計算下一個方塊
-                            score = this._best(_grid, workingPieces, workingPieceIndex + 1).score;
-                        }
+                        // 清除完整行
+                        this.clearLines(simulatedGrid);
                         
-                        if (bestScore === null || score > bestScore) {
+                        // 評估局面
+                        const score = this.evaluateBoard(simulatedGrid);
+                        
+                        if (score > bestScore) {
                             bestScore = score;
-                            best = this.copyPiece(_piece);
+                            bestMove = { rotations, x };
                         }
-                        
-                        _piece.pos.x++; // 向右移動繼續嘗試
                     }
                 }
                 
-                return { piece: best, score: bestScore };
+                return bestMove;
+            }
+            
+            // 獲取所有可能的移動
+            getAllPossibleMoves(grid, piece) {
+                const moves = [];
+                
+                // 嘗試所有旋轉（0-3次）
+                for (let rotations = 0; rotations < 4; rotations++) {
+                    const testPiece = this.copyPiece(piece);
+                    
+                    // 應用旋轉
+                    for (let i = 0; i < rotations; i++) {
+                        this.rotatePiece(testPiece);
+                    }
+                    
+                    // 嘗試所有水平位置
+                    for (let x = -2; x < COLS + 2; x++) {
+                        testPiece.pos.x = x;
+                        testPiece.pos.y = 0;
+                        
+                        // 檢查位置是否有效
+                        if (!this.checkCollision(grid, testPiece)) {
+                            moves.push({ rotations, x });
+                        }
+                    }
+                }
+                
+                return moves;
+            }
+            
+            // 評估棋盤狀態
+            evaluateBoard(grid) {
+                const aggregateHeight = this.calculateAggregateHeight(grid);
+                const lines = this.calculateLines(grid);
+                const holes = this.calculateHoles(grid);
+                const bumpiness = this.calculateBumpiness(grid);
+                
+                // 使用原始遊戲的評估公式
+                return -this.weights.heightWeight * aggregateHeight +
+                       this.weights.linesWeight * lines -
+                       this.weights.holesWeight * holes -
+                       this.weights.bumpinessWeight * bumpiness;
             }
             
             // 計算總高度
-            aggregateHeight(grid) {
-                let total = 0;
-                for (let c = 0; c < COLS; c++) {
-                    total += this.columnHeight(grid, c);
+            calculateAggregateHeight(grid) {
+                let totalHeight = 0;
+                for (let col = 0; col < COLS; col++) {
+                    totalHeight += this.getColumnHeight(grid, col);
                 }
-                return total;
+                return totalHeight;
             }
             
             // 計算單列高度
-            columnHeight(grid, column) {
-                let r = 0;
-                for (; r < ROWS && grid[r][column] === 0; r++);
-                return ROWS - r;
+            getColumnHeight(grid, col) {
+                for (let row = 0; row < ROWS; row++) {
+                    if (grid[row][col] !== 0) {
+                        return ROWS - row;
+                    }
+                }
+                return 0;
             }
             
             // 計算完整行數
-            lines(grid) {
-                let count = 0;
-                for (let r = 0; r < ROWS; r++) {
-                    if (this.isLine(grid, r)) {
-                        count++;
+            calculateLines(grid) {
+                let lines = 0;
+                for (let row = 0; row < ROWS; row++) {
+                    if (this.isLineComplete(grid, row)) {
+                        lines++;
                     }
                 }
-                return count;
+                return lines;
             }
             
             // 檢查行是否完整
-            isLine(grid, row) {
-                for (let c = 0; c < COLS; c++) {
-                    if (grid[row][c] === 0) {
+            isLineComplete(grid, row) {
+                for (let col = 0; col < COLS; col++) {
+                    if (grid[row][col] === 0) {
                         return false;
                     }
                 }
@@ -1281,48 +1405,119 @@
             }
             
             // 計算空洞數量
-            holes(grid) {
-                let count = 0;
-                for (let c = 0; c < COLS; c++) {
-                    let block = false;
-                    for (let r = 0; r < ROWS; r++) {
-                        if (grid[r][c] !== 0) {
-                            block = true;
-                        } else if (grid[r][c] === 0 && block) {
-                            count++;
+            calculateHoles(grid) {
+                let holes = 0;
+                for (let col = 0; col < COLS; col++) {
+                    let foundBlock = false;
+                    for (let row = 0; row < ROWS; row++) {
+                        if (grid[row][col] !== 0) {
+                            foundBlock = true;
+                        } else if (foundBlock && grid[row][col] === 0) {
+                            holes++;
                         }
                     }
                 }
-                return count;
+                return holes;
             }
             
-            // 計算凹凸不平度
-            bumpiness(grid) {
-                let total = 0;
+            // 計算凹凸度
+            calculateBumpiness(grid) {
+                let bumpiness = 0;
                 const heights = [];
                 
-                for (let c = 0; c < COLS; c++) {
-                    heights.push(this.columnHeight(grid, c));
+                // 獲取每列高度
+                for (let col = 0; col < COLS; col++) {
+                    heights.push(this.getColumnHeight(grid, col));
                 }
                 
+                // 計算相鄰列的高度差
                 for (let i = 0; i < heights.length - 1; i++) {
-                    total += Math.abs(heights[i] - heights[i + 1]);
+                    bumpiness += Math.abs(heights[i] - heights[i + 1]);
                 }
                 
-                return total;
+                return bumpiness;
             }
             
-            // 複製網格
-            copyGrid(grid) {
-                return grid.map(row => [...row]);
+            // 清除完整行
+            clearLines(grid) {
+                let linesCleared = 0;
+                let row = ROWS - 1;
+                
+                while (row >= 0) {
+                    if (this.isLineComplete(grid, row)) {
+                        // 移除該行
+                        for (let r = row; r > 0; r--) {
+                            for (let c = 0; c < COLS; c++) {
+                                grid[r][c] = grid[r - 1][c];
+                            }
+                        }
+                        // 清空頂行
+                        for (let c = 0; c < COLS; c++) {
+                            grid[0][c] = 0;
+                        }
+                        linesCleared++;
+                    } else {
+                        row--;
+                    }
+                }
+                
+                return linesCleared;
             }
             
-            // 複製方塊
-            copyPiece(piece) {
-                return {
-                    matrix: piece.matrix.map(row => [...row]),
-                    pos: { x: piece.pos.x, y: piece.pos.y }
-                };
+            // 下落方塊到底部
+            dropPiece(grid, piece) {
+                let y = piece.pos.y;
+                while (!this.checkCollision(grid, piece)) {
+                    y++;
+                    piece.pos.y = y;
+                }
+                return y - 1;
+            }
+            
+            // 檢查碰撞
+            checkCollision(grid, piece) {
+                const matrix = piece.matrix;
+                const pos = piece.pos;
+                
+                for (let y = 0; y < matrix.length; y++) {
+                    for (let x = 0; x < matrix[y].length; x++) {
+                        if (matrix[y][x] !== 0) {
+                            const boardX = pos.x + x;
+                            const boardY = pos.y + y;
+                            
+                            // 檢查邊界
+                            if (boardX < 0 || boardX >= COLS || boardY >= ROWS) {
+                                return true;
+                            }
+                            
+                            // 檢查是否與已有方塊重疊
+                            if (boardY >= 0 && grid[boardY][boardX] !== 0) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+                
+                return false;
+            }
+            
+            // 放置方塊
+            placePiece(grid, piece) {
+                const matrix = piece.matrix;
+                const pos = piece.pos;
+                
+                for (let y = 0; y < matrix.length; y++) {
+                    for (let x = 0; x < matrix[y].length; x++) {
+                        if (matrix[y][x] !== 0) {
+                            const boardY = pos.y + y;
+                            const boardX = pos.x + x;
+                            
+                            if (boardY >= 0 && boardY < ROWS && boardX >= 0 && boardX < COLS) {
+                                grid[boardY][boardX] = matrix[y][x];
+                            }
+                        }
+                    }
+                }
             }
             
             // 旋轉方塊
@@ -1337,100 +1532,57 @@
                 }
                 
                 piece.matrix = rotated;
-                return piece;
             }
             
-            // 檢查是否可以向左移動
-            canMoveLeft(piece, grid) {
-                piece.pos.x--;
-                const canMove = this.isValidPosition(piece, grid);
-                piece.pos.x++;
-                return canMove;
+            // 複製網格
+            copyGrid(grid) {
+                return grid.map(row => [...row]);
             }
             
-            // 檢查是否可以向下移動
-            canMoveDown(piece, grid) {
-                piece.pos.y++;
-                const canMove = this.isValidPosition(piece, grid);
-                piece.pos.y--;
-                return canMove;
-            }
-            
-            // 檢查位置是否有效
-            isValidPosition(piece, grid) {
-                const matrix = piece.matrix;
-                const pos = piece.pos;
-                
-                for (let y = 0; y < matrix.length; y++) {
-                    for (let x = 0; x < matrix[y].length; x++) {
-                        if (matrix[y][x] !== 0) {
-                            const boardX = pos.x + x;
-                            const boardY = pos.y + y;
-                            
-                            if (boardX < 0 || boardX >= COLS || 
-                                boardY >= ROWS || 
-                                (boardY >= 0 && grid[boardY][boardX] !== 0)) {
-                                return false;
-                            }
-                        }
-                    }
-                }
-                return true;
-            }
-            
-            // 放置方塊到網格
-            placePiece(grid, piece) {
-                const matrix = piece.matrix;
-                const pos = piece.pos;
-                
-                for (let y = 0; y < matrix.length; y++) {
-                    for (let x = 0; x < matrix[y].length; x++) {
-                        if (matrix[y][x] !== 0) {
-                            const boardY = pos.y + y;
-                            if (boardY >= 0) {
-                                grid[boardY][pos.x + x] = matrix[y][x];
-                            }
-                        }
-                    }
-                }
+            // 複製方塊
+            copyPiece(piece) {
+                return {
+                    matrix: piece.matrix.map(row => [...row]),
+                    pos: { x: piece.pos.x, y: piece.pos.y }
+                };
             }
         }
 
-        const gameAI = new TetrisAI();
+        // 創建專業AI實例
+        const professionalAI = new ProfessionalTetrisAI();
 
-        // AI移動步驟
+        // ====================================================
+        // AI執行邏輯
+        // ====================================================
         let aiMoveSteps = [];
         let currentAiStep = 0;
         let aiMoveTimer = null;
         let aiDropTimer = null;
-        let aiDropSpeed = 30; // 加快AI下落速度（從100ms改為30ms）
+        let aiDropSpeed = 30;
 
         // 執行AI移動
         function executeAiMove() {
             if (!player.matrix || isPaused || !isAutoPlay) return;
             
             if (aiMoveSteps.length === 0) {
-                // 創建工作方塊列表（當前方塊和下一個方塊）
-                const workingPieces = [
-                    { matrix: player.matrix, pos: { ...player.pos } },
-                    { matrix: player.next, pos: { x: 0, y: 0 } }
-                ];
-                
                 // 計算最佳移動
-                const bestMove = gameAI.best(arena, workingPieces);
+                const bestMove = professionalAI.findBestMove(
+                    arena,
+                    { matrix: player.matrix, pos: { ...player.pos } },
+                    player.next
+                );
                 
                 if (bestMove) {
                     // 生成移動步驟
                     aiMoveSteps = [];
                     
-                    // 計算需要旋轉的次數
-                    const targetRotation = this.findRotationCount(player.matrix, bestMove.matrix);
-                    for (let i = 0; i < targetRotation; i++) {
+                    // 旋轉步驟
+                    for (let i = 0; i < bestMove.rotations; i++) {
                         aiMoveSteps.push({ type: 'rotate', direction: 1 });
                     }
                     
-                    // 計算需要水平移動的距離
-                    const targetX = bestMove.pos.x;
+                    // 水平移動步驟
+                    const targetX = bestMove.x;
                     const currentX = player.pos.x;
                     const moveDistance = targetX - currentX;
                     const moveDirection = Math.sign(moveDistance);
@@ -1441,52 +1593,10 @@
                     
                     currentAiStep = 0;
                     
+                    // 開始執行移動步驟
                     executeNextAiStep();
                 }
             }
-        }
-
-        // 查找需要旋轉的次數
-        function findRotationCount(originalMatrix, targetMatrix) {
-            let testMatrix = originalMatrix.map(row => [...row]);
-            
-            for (let rotation = 0; rotation < 4; rotation++) {
-                if (matricesEqual(testMatrix, targetMatrix)) {
-                    return rotation;
-                }
-                
-                // 旋轉測試矩陣
-                const n = testMatrix.length;
-                const rotated = new Array(n).fill().map(() => new Array(n).fill(0));
-                
-                for (let i = 0; i < n; i++) {
-                    for (let j = 0; j < n; j++) {
-                        rotated[j][n - 1 - i] = testMatrix[i][j];
-                    }
-                }
-                
-                testMatrix = rotated;
-            }
-            
-            return 0;
-        }
-
-        // 比較兩個矩陣是否相等
-        function matricesEqual(matrix1, matrix2) {
-            if (matrix1.length !== matrix2.length) return false;
-            
-            for (let i = 0; i < matrix1.length; i++) {
-                if (matrix1[i].length !== matrix2[i].length) return false;
-                
-                for (let j = 0; j < matrix1[i].length; j++) {
-                    if ((matrix1[i][j] !== 0 && matrix2[i][j] === 0) || 
-                        (matrix1[i][j] === 0 && matrix2[i][j] !== 0)) {
-                        return false;
-                    }
-                }
-            }
-            
-            return true;
         }
 
         // 執行下一個AI步驟
@@ -1510,10 +1620,10 @@
             currentAiStep++;
             
             clearTimeout(aiMoveTimer);
-            aiMoveTimer = setTimeout(executeNextAiStep, 50); // 加快AI思考速度
+            aiMoveTimer = setTimeout(executeNextAiStep, 30);
         }
 
-        // AI自動下落（加快速度）
+        // AI自動下落
         function startAiDrop() {
             if (aiDropTimer) {
                 clearInterval(aiDropTimer);
@@ -1536,44 +1646,14 @@
                     playerReset();
                     arenaSweep();
                     
+                    // 重置移動步驟，準備下一個決策
                     aiMoveSteps = [];
                     currentAiStep = 0;
                     
-                    setTimeout(executeAiMove, 100); // 加快下一個決策
+                    // 快速開始下一個決策
+                    setTimeout(executeAiMove, 50);
                 }
             }, aiDropSpeed);
-        }
-
-        // ====================================================
-        // 三擊功能
-        // ====================================================
-        function initTripleClickFeature() {
-            const highscorePanel = document.getElementById('highscore-panel');
-            highscorePanel.addEventListener('click', handleTripleClick);
-        }
-
-        function handleTripleClick() {
-            tripleClickCount++;
-            
-            if (tripleClickCount === 1) {
-                tripleClickTimer = setTimeout(() => {
-                    tripleClickCount = 0;
-                }, 500);
-            }
-            
-            if (tripleClickCount === 3) {
-                clearTimeout(tripleClickTimer);
-                tripleClickCount = 0;
-                
-                toggleAutoPlay();
-                
-                const highscorePanel = document.getElementById('highscore-panel');
-                highscorePanel.classList.add('highscore-triple-click');
-                
-                setTimeout(() => {
-                    highscorePanel.classList.remove('highscore-triple-click');
-                }, 500);
-            }
         }
 
         // ====================================================
@@ -2608,6 +2688,36 @@
 
         player.next = createPiece(randomGenerator.nextPiece());
         drawNext();
+        
+        // 初始化三擊功能
+        function initTripleClickFeature() {
+            const highscorePanel = document.getElementById('highscore-panel');
+            highscorePanel.addEventListener('click', handleTripleClick);
+        }
+        
+        function handleTripleClick() {
+            tripleClickCount++;
+            
+            if (tripleClickCount === 1) {
+                tripleClickTimer = setTimeout(() => {
+                    tripleClickCount = 0;
+                }, 500);
+            }
+            
+            if (tripleClickCount === 3) {
+                clearTimeout(tripleClickTimer);
+                tripleClickCount = 0;
+                
+                toggleAutoPlay();
+                
+                const highscorePanel = document.getElementById('highscore-panel');
+                highscorePanel.classList.add('highscore-triple-click');
+                
+                setTimeout(() => {
+                    highscorePanel.classList.remove('highscore-triple-click');
+                }, 500);
+            }
+        }
         
         initTripleClickFeature();
     </script>
