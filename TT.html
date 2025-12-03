@@ -997,7 +997,7 @@
                 <div id="highscore" class="panel-value">0</div>
             </div>
             
-            <div class="panel-box primary-panel" id="mode-panel">
+            <div class="panel-box primary-panel clickable" id="mode-panel" onclick="backToMenu()">
                 <div class="panel-label">Mode</div>
                 <div id="mode" class="panel-value">簡易</div>
             </div>
@@ -1069,7 +1069,7 @@
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">方塊數量：</span>
-                        <span id="completion-pieces" class="stat-value">0</span>
+                        <span id="completion-pieces" class="panel-value">0</span>
                     </div>
                 </div>
                 
@@ -1356,7 +1356,7 @@
         let clearingLines = [];
         let clearingAnimationProgress = 0;
         let piecesCount = 0;
-        let nextSpecialPiece = 50;
+        let nextSpecialPiece = 100; // 修改：從50改為100
         let specialPiecesCount = 0;
         let isSpecialPauseEnabled = false;
         let isSpecialPiecePaused = false;
@@ -1541,7 +1541,7 @@
 
         function getRandomPieceType() {
             if (piecesCount >= nextSpecialPiece) {
-                nextSpecialPiece += 50;
+                nextSpecialPiece += 100; // 修改：從50改為100
                 return specialGenerator.nextPiece();
             }
             
@@ -2058,25 +2058,135 @@
         }
 
         // ====================================================
+        // 重置遊戲狀態函數
+        // ====================================================
+        function resetGameState() {
+            // 重置遊戲狀態變量
+            isPaused = true;
+            isGameOver = false;
+            isGameCompleted = false;
+            isAutoPlay = false;
+            isSoftDropping = false;
+            isSpecialPiecePaused = false;
+            isSecondaryPanelActive = false;
+            
+            // 重置分數和統計數據
+            player.score = 0;
+            totalLinesCleared = 0;
+            level = 1;
+            piecesCount = 0;
+            nextSpecialPiece = 100; // 修改：從50改為100
+            dropCounter = 0;
+            lastTime = 0;
+            
+            // 清空棋盤
+            for (let y = 0; y < ROWS; y++) {
+                for (let x = 0; x < COLS; x++) {
+                    arena[y][x] = 0;
+                }
+            }
+            
+            // 重置玩家狀態
+            player.matrix = null;
+            player.pos = {x: 0, y: 0};
+            player.next = null;
+            
+            // 重置AI狀態
+            aiMoveSteps = [];
+            currentAiStep = 0;
+            if (aiMoveTimer) {
+                clearTimeout(aiMoveTimer);
+                aiMoveTimer = null;
+            }
+            if (aiDropTimer) {
+                clearInterval(aiDropTimer);
+                aiDropTimer = null;
+            }
+            
+            // 重置清除動畫
+            clearingLines = [];
+            clearingAnimationProgress = 0;
+            
+            // 重置隨機生成器
+            randomGenerator = new ProfessionalRandomPieceGenerator();
+            specialGenerator = new SpecialPieceGenerator();
+            
+            // 更新UI顯示
+            document.getElementById('score').innerText = player.score;
+            document.getElementById('lines').innerText = totalLinesCleared;
+            document.getElementById('level').innerText = getDisplayLevel();
+            document.getElementById('pieces-count').innerText = piecesCount;
+            
+            // 更新模式顯示
+            document.getElementById('mode').innerText = gameModes[gameMode].name;
+            
+            // 更新速度顯示
+            updateSpeedDisplay();
+            
+            // 重置暫停狀態顯示
+            document.getElementById('pause-status').innerHTML = '❚❚';
+            pauseText.style.display = 'none';
+            
+            // 重置AI指示器
+            aiIndicator.classList.remove('active');
+            
+            // 重置面板狀態
+            const primaryPanels = document.querySelectorAll('.primary-panel');
+            const secondaryPanels = document.querySelectorAll('.secondary-panel');
+            
+            primaryPanels.forEach(panel => {
+                panel.classList.remove('hidden');
+            });
+            
+            secondaryPanels.forEach(panel => {
+                panel.classList.remove('visible');
+            });
+            
+            // 重置特殊暫停狀態
+            document.getElementById('special-pause-status').innerText = 'OFF';
+            isSpecialPauseEnabled = false;
+            
+            // 停止任何正在進行的特效
+            if (fireworkInterval) {
+                clearInterval(fireworkInterval);
+                fireworkInterval = null;
+            }
+            if (confettiInterval) {
+                clearInterval(confettiInterval);
+                confettiInterval = null;
+            }
+            
+            // 停止完成音效
+            soundManager.stopCompletionSound();
+        }
+
+        // ====================================================
         // 遊戲控制函數
         // ====================================================
         function selectLevel(mode) {
+            // 重置遊戲狀態
+            resetGameState();
+            
+            // 設置新遊戲模式
             gameMode = mode;
             const modeConfig = gameModes[mode];
             
+            // 更新UI按鈕狀態
             document.querySelectorAll('.level-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
             event.currentTarget.classList.add('active');
             
+            // 設置新速度
             dropInterval = modeConfig.baseSpeed;
             softDropInterval = modeConfig.softDropSpeed;
             
+            // 更新顯示
             document.getElementById('mode').innerText = modeConfig.name;
             updateSpeedDisplay();
-            
             updateDisplayLevel();
             
+            // 開始新遊戲
             startGame();
         }
 
@@ -2765,41 +2875,13 @@
             
             stopCompletionEffects();
             
-            isGameOver = false;
-            isGameCompleted = false;
-            arena.forEach(row => row.fill(0));
-            player.score = 0;
-            totalLinesCleared = 0;
-            level = 1;
-            piecesCount = 0;
-            nextSpecialPiece = 50;
+            // 重置遊戲狀態
+            resetGameState();
             
-            randomGenerator = new ProfessionalRandomPieceGenerator();
-            specialGenerator = new SpecialPieceGenerator();
-            
-            document.getElementById('score').innerText = player.score;
-            document.getElementById('lines').innerText = totalLinesCleared;
-            document.getElementById('pieces-count').innerText = piecesCount;
-            
-            isAutoPlay = false;
-            aiIndicator.classList.remove('active');
-            
-            isSecondaryPanelActive = false;
-            const primaryPanels = document.querySelectorAll('.primary-panel');
-            const secondaryPanels = document.querySelectorAll('.secondary-panel');
-            
-            primaryPanels.forEach(panel => {
-                panel.classList.remove('hidden');
-            });
-            
-            secondaryPanels.forEach(panel => {
-                panel.classList.remove('visible');
-            });
-            
+            // 隱藏遊戲畫面，顯示主菜單
             document.getElementById('game-container').style.display = 'none';
             document.getElementById('controls').style.display = 'none';
             document.getElementById('overlay').style.display = 'flex';
-            isPaused = true;
         }
 
         function restartGame() {
@@ -2808,44 +2890,22 @@
             
             stopCompletionEffects();
             
-            randomGenerator = new ProfessionalRandomPieceGenerator();
-            specialGenerator = new SpecialPieceGenerator();
+            // 重置遊戲狀態
+            resetGameState();
             
-            isGameOver = false;
-            isGameCompleted = false;
-            arena.forEach(row => row.fill(0));
-            player.score = 0;
-            totalLinesCleared = 0;
-            level = 1;
-            piecesCount = 0;
-            nextSpecialPiece = 50;
+            // 設置當前模式的基礎速度
             dropInterval = gameModes[gameMode].baseSpeed;
+            softDropInterval = gameModes[gameMode].softDropSpeed;
             
-            document.getElementById('score').innerText = player.score;
-            document.getElementById('lines').innerText = totalLinesCleared;
-            document.getElementById('pieces-count').innerText = piecesCount;
+            // 更新顯示
             updateSpeedDisplay();
-            
-            isAutoPlay = false;
-            aiIndicator.classList.remove('active');
-            
-            isSecondaryPanelActive = false;
-            const primaryPanels = document.querySelectorAll('.primary-panel');
-            const secondaryPanels = document.querySelectorAll('.secondary-panel');
-            
-            primaryPanels.forEach(panel => {
-                panel.classList.remove('hidden');
-            });
-            
-            secondaryPanels.forEach(panel => {
-                panel.classList.remove('visible');
-            });
-            
             updateDisplayLevel();
             
+            // 顯示遊戲畫面
             document.getElementById('game-container').style.display = 'flex';
             document.getElementById('controls').style.display = 'flex';
             
+            // 開始新遊戲
             playerReset();
             isPaused = false;
             pauseText.style.display = 'none';
@@ -2933,24 +2993,18 @@
         }
 
         function startGame() {
-            randomGenerator = new ProfessionalRandomPieceGenerator();
-            specialGenerator = new SpecialPieceGenerator();
-            
+            // 初始化音效
             soundManager.init();
             
+            // 隱藏主菜單，顯示遊戲畫面
             document.getElementById('overlay').style.display = 'none';
             document.getElementById('game-container').style.display = 'flex';
             document.getElementById('controls').style.display = 'flex';
             
-            if(isGameOver || isGameCompleted) {
-                isGameOver = false;
-                isGameCompleted = false;
-                playerReset();
-            }
-            if(player.matrix === null) {
-                playerReset();
-            }
+            // 重置玩家
+            playerReset();
             
+            // 開始遊戲循環
             isPaused = false;
             pauseText.style.display = 'none';
             lastTime = performance.now();
@@ -2976,6 +3030,43 @@
             }
         }
 
+        // ====================================================
+        // 三擊功能初始化
+        // ====================================================
+        
+        // 初始化高分的三擊功能
+        function initTripleClickFeature() {
+            const highscorePanel = document.getElementById('highscore-panel');
+            highscorePanel.addEventListener('click', handleTripleClick);
+        }
+        
+        function handleTripleClick() {
+            tripleClickCount++;
+            
+            if (tripleClickCount === 1) {
+                tripleClickTimer = setTimeout(() => {
+                    tripleClickCount = 0;
+                }, 500);
+            }
+            
+            if (tripleClickCount === 3) {
+                clearTimeout(tripleClickTimer);
+                tripleClickCount = 0;
+                
+                toggleAutoPlay();
+                
+                const highscorePanel = document.getElementById('highscore-panel');
+                highscorePanel.classList.add('highscore-triple-click');
+                
+                setTimeout(() => {
+                    highscorePanel.classList.remove('highscore-triple-click');
+                }, 500);
+            }
+        }
+        
+        // ====================================================
+        // 事件監聽器
+        // ====================================================
         document.addEventListener('keydown', event => {
             if (event.keyCode === 69) {
                 if (!isGameCompleted) {
@@ -3095,39 +3186,11 @@
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
 
+        // 初始化遊戲
         player.next = createPiece(randomGenerator.nextPiece());
         drawNext();
         
         // 初始化三擊功能
-        function initTripleClickFeature() {
-            const highscorePanel = document.getElementById('highscore-panel');
-            highscorePanel.addEventListener('click', handleTripleClick);
-        }
-        
-        function handleTripleClick() {
-            tripleClickCount++;
-            
-            if (tripleClickCount === 1) {
-                tripleClickTimer = setTimeout(() => {
-                    tripleClickCount = 0;
-                }, 500);
-            }
-            
-            if (tripleClickCount === 3) {
-                clearTimeout(tripleClickTimer);
-                tripleClickCount = 0;
-                
-                toggleAutoPlay();
-                
-                const highscorePanel = document.getElementById('highscore-panel');
-                highscorePanel.classList.add('highscore-triple-click');
-                
-                setTimeout(() => {
-                    highscorePanel.classList.remove('highscore-triple-click');
-                }, 500);
-            }
-        }
-        
         initTripleClickFeature();
     </script>
 </body>
