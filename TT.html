@@ -2,8 +2,9 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>俄羅斯方塊</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=portrait">
+    <meta name="version" content="1.23">
+    <title>俄羅斯方塊 V1.23</title>
     <style>
         :root {
             --bg-color: #051025;
@@ -29,6 +30,15 @@
             min-height: 100vh;
             overflow: hidden;
             touch-action: manipulation;
+        }
+        
+        body {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
         }
 
         #game-container {
@@ -112,11 +122,11 @@
         }
 
         .btn {
-            width: 68px;
-            height: 68px;
-            background: linear-gradient(145deg, var(--btn-color), #0e5a5e);
-            border: none;
-            border-radius: 16px;
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(145deg, var(--btn-color), #0e5a5e, #0a4a4e);
+            border: 2px solid rgba(77, 201, 207, 0.3);
+            border-radius: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -125,49 +135,104 @@
             cursor: pointer;
             user-select: none;
             -webkit-user-select: none;
-            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             flex-shrink: 0;
             position: relative;
             overflow: hidden;
             box-shadow:
-                0 4px 8px rgba(0, 0, 0, 0.3),
+                0 6px 12px rgba(0, 0, 0, 0.4),
                 0 0 0 1px rgba(255, 255, 255, 0.1),
-                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+                inset 0 1px 0 rgba(255, 255, 255, 0.2),
+                0 0 20px rgba(77, 201, 207, 0.2);
         }
 
         .btn::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                45deg,
+                transparent,
+                rgba(77, 201, 207, 0.3),
+                transparent
+            );
+            opacity: 0;
+            transition: opacity 0.6s ease, transform 0.6s ease;
+            transform: rotate(0deg);
+        }
+
+        .btn:hover::before {
+            opacity: 1;
+            transform: rotate(360deg);
+        }
+
+        .btn::after {
             content: '';
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: radial-gradient(circle at center, var(--btn-glow) 0%, transparent 70%);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            border-radius: 16px;
+            background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.2), transparent 70%);
+            border-radius: 20px;
         }
 
-        .btn:hover::before {
-            opacity: 0.6;
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow:
+                0 8px 16px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(255, 255, 255, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                0 0 30px rgba(77, 201, 207, 0.4);
         }
 
         .btn:active, .btn.active {
-            transform: scale(0.92) translateY(2px);
+            transform: scale(0.95) translateY(0);
             box-shadow:
-                0 2px 4px rgba(0, 0, 0, 0.4),
+                0 3px 6px rgba(0, 0, 0, 0.5),
                 0 0 0 1px rgba(255, 255, 255, 0.2),
-                inset 0 2px 4px rgba(0, 0, 0, 0.3);
-            background: linear-gradient(145deg, var(--btn-active), #0a4a4e);
+                inset 0 2px 8px rgba(0, 0, 0, 0.4),
+                0 0 15px rgba(77, 201, 207, 0.3);
+            background: linear-gradient(145deg, var(--btn-active), #0a4a4e, #083a3e);
         }
 
         .btn-icon {
-            filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3));
-            transition: transform 0.2s ease;
+            position: relative;
+            z-index: 2;
+            filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4));
+            transition: transform 0.3s ease, filter 0.3s ease;
+        }
+
+        .btn:hover .btn-icon {
+            transform: scale(1.1);
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
         }
 
         .btn:active .btn-icon {
-            transform: scale(0.9);
+            transform: scale(0.95);
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+        }
+
+        /* 按鍵圖標圖像樣式 */
+        .btn-icon-img {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+            filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.6));
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover .btn-icon-img {
+            transform: scale(1.1);
+            filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.8));
+        }
+
+        .btn:active .btn-icon-img {
+            transform: scale(0.95);
+            filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.4));
         }
 
         #overlay {
@@ -377,6 +442,17 @@
             display: none;
         }
 
+        /* 煙花效果 */
+        #fireworks-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
         /* 通關畫面 - 重新設計不滾動版本 */
         #completion-overlay {
             position: fixed;
@@ -393,6 +469,11 @@
             padding: 15px;
             box-sizing: border-box;
             overflow: hidden;
+        }
+
+        #completion-overlay .completion-content {
+            position: relative;
+            z-index: 2;
         }
 
         .completion-content {
@@ -506,18 +587,36 @@
             background: linear-gradient(145deg, #718096, #4a5568);
         }
 
+        /* 新增：無限模式按鈕樣式 */
+        #continue-infinite-btn {
+            background: linear-gradient(145deg, #ff6b6b, #ee5a52);
+        }
+
+        #continue-infinite-btn:hover {
+            background: linear-gradient(145deg, #ff8e8e, #ff6b6b);
+        }
+
         .firework {
             position: absolute;
             width: 8px;
             height: 8px;
             border-radius: 50%;
             pointer-events: none;
-            animation: fireworkExplode 1.5s forwards;
         }
 
-        @keyframes fireworkExplode {
-            0% { transform: translate(0, 0); opacity: 1; }
-            100% { transform: translate(var(--tx), var(--ty)); opacity: 0; }
+        .firework-burst {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: fireworkBurst 1.5s forwards;
+        }
+
+        @keyframes fireworkBurst {
+            0% { transform: scale(0); opacity: 1; }
+            50% { opacity: 1; }
+            100% { transform: scale(1) translate(var(--tx), var(--ty)); opacity: 0; }
         }
 
         .confetti {
@@ -979,6 +1078,8 @@
     </style>
 </head>
 <body>
+    <canvas id="fireworks-canvas"></canvas>
+    
     <div id="ai-indicator">AI 託管中</div>
     
     <div class="pause-text" id="pause-text">PAUSE</div>
@@ -1007,7 +1108,7 @@
                 <div id="score" class="panel-value">0</div>
             </div>
             
-            <div class="panel-box primary-panel" id="level-panel">
+            <div class="panel-box primary-panel clickable" id="level-panel">
                 <div class="panel-label">Level</div>
                 <div id="level" class="panel-value">1</div>
             </div>
@@ -1074,6 +1175,7 @@
                 </div>
                 
                 <div id="completion-buttons">
+                    <button class="completion-btn" onclick="continueInfiniteMode()">無限模式繼續</button>
                     <button class="completion-btn" onclick="restartGame()">重新開始</button>
                     <button id="back-to-menu-btn" class="completion-btn" onclick="backToMenu()">返回主菜單</button>
                 </div>
@@ -1083,19 +1185,19 @@
 
     <div id="controls">
         <div class="btn" id="btn-left">
-            <div class="btn-icon">⬅️</div>
+            <img src="arrow-fat-left-bold.png" alt="左移" class="btn-icon-img">
         </div>
         <div class="btn" id="btn-right">
-            <div class="btn-icon">➡️</div>
+            <img src="arrow-fat-right-bold.png" alt="右移" class="btn-icon-img">
         </div>
         <div class="btn" id="btn-down">
-            <div class="btn-icon">⬇️</div>
+            <img src="arrow-fat-down-bold.png" alt="下移" class="btn-icon-img">
         </div>
         <div class="btn" id="btn-rotate">
-            <div class="btn-icon">🔄</div>
+            <img src="arrows-clockwise-bold.png" alt="旋轉" class="btn-icon-img">
         </div>
         <div class="btn" id="btn-hard-drop">
-            <div class="btn-icon">💥</div>
+            <img src="arrow-fat-lines-down-bold.png" alt="硬落下" class="btn-icon-img">
         </div>
     </div>
 
@@ -1147,7 +1249,12 @@
                     
                     this.sounds.lineClear = this.createChordSound([523.25, 659.25, 783.99], 0.3);
                     this.sounds.gameOver = this.createChordSound([220, 277.18, 329.63], 0.8);
-                    this.sounds.land = this.createTone(200, 0.1);
+                    this.sounds.land = [];
+                    this.sounds.land.push(this.createTone(200, 0.1));
+                    this.sounds.land.push(this.createTone(220, 0.1));
+                    this.sounds.land.push(this.createTone(240, 0.1));
+                    this.sounds.land.push(this.createTone(260, 0.1));
+                    this.sounds.land.push(this.createTone(280, 0.1));
                     this.sounds.specialPiece = this.createChordSound([659.25, 830.61, 1046.50], 0.5);
                     
                     this.initialized = true;
@@ -1206,7 +1313,12 @@
                     this.audioContext.resume();
                 }
                 
-                this.sounds[soundName]();
+                if (Array.isArray(this.sounds[soundName])) {
+                    const randomIndex = Math.floor(Math.random() * this.sounds[soundName].length);
+                    this.sounds[soundName][randomIndex]();
+                } else {
+                    this.sounds[soundName]();
+                }
             }
             
             startCompletionSound() {
@@ -1356,18 +1468,30 @@
         let clearingLines = [];
         let clearingAnimationProgress = 0;
         let piecesCount = 0;
-        let nextSpecialPiece = 100; // 修改：從50改為100
+        let nextSpecialPiece = 100;
         let specialPiecesCount = 0;
         let isSpecialPauseEnabled = false;
         let isSpecialPiecePaused = false;
         let isGameCompleted = false;
         let fireworkInterval = null;
         let confettiInterval = null;
+        let isInfiniteMode = false; // 新增：無限模式標誌
 
         let tripleClickCount = 0;
         let tripleClickTimer = null;
 
         let isSecondaryPanelActive = false;
+        let levelClickCount = 0;
+        let levelClickTimeout = null;
+
+        // 煙花效果
+        let fireworks = {
+            canvas: null,
+            ctx: null,
+            particles: [],
+            isActive: false,
+            animationId: null
+        };
 
         const levelSpeedIncrease = 2;
 
@@ -1409,6 +1533,173 @@
         document.getElementById('pieces-count').innerText = piecesCount;
         updateSpeedDisplay();
 
+        // 取消右键菜单
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+
+        // 监听level框点击事件
+        const levelPanel = document.getElementById('level-panel');
+        if (levelPanel) {
+            levelPanel.addEventListener('click', function() {
+                levelClickCount++;
+                
+                // 清除之前的定时器
+                if (levelClickTimeout) {
+                    clearTimeout(levelClickTimeout);
+                }
+                
+                // 设置新的定时器，2秒内没有点击则重置计数
+                levelClickTimeout = setTimeout(function() {
+                    levelClickCount = 0;
+                }, 2000);
+                
+                // 连续点击6下
+                if (levelClickCount === 6) {
+                    levelClickCount = 0;
+                    gameCompleted();
+                }
+            });
+        }
+
+        // 初始化煙花效果
+        function initFireworks() {
+            fireworks.canvas = document.getElementById('fireworks-canvas');
+            if (!fireworks.canvas) return;
+            
+            fireworks.ctx = fireworks.canvas.getContext('2d');
+            
+            // 設定Canvas大小
+            function resizeCanvas() {
+                if (fireworks.canvas) {
+                    fireworks.canvas.width = window.innerWidth;
+                    fireworks.canvas.height = window.innerHeight;
+                }
+            }
+            
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+        }
+
+        // 開始煙花效果
+        function startFireworks() {
+            if (fireworks.isActive) return;
+            
+            fireworks.isActive = true;
+            if (fireworks.canvas) {
+                fireworks.canvas.style.display = 'block';
+            }
+            
+            // 清空粒子
+            fireworks.particles = [];
+            
+            // 創建初始煙花
+            createFirework();
+            
+            // 開始動畫循環
+            animateFireworks();
+        }
+
+        // 停止煙花效果
+        function stopFireworks() {
+            fireworks.isActive = false;
+            if (fireworks.canvas) {
+                fireworks.canvas.style.display = 'none';
+            }
+            
+            if (fireworks.animationId) {
+                cancelAnimationFrame(fireworks.animationId);
+                fireworks.animationId = null;
+            }
+        }
+
+        // 創建一個煙花
+        function createFirework() {
+            if (!fireworks.isActive) return;
+            
+            // 隨機位置 - 覆蓋全屏
+            const x = Math.random() * (fireworks.canvas ? fireworks.canvas.width : window.innerWidth);
+            const y = Math.random() * (fireworks.canvas ? fireworks.canvas.height : window.innerHeight) * 0.7; // 上70%部分
+            
+            // 隨機顏色
+            const colors = [
+                '#FF0000', '#FF9900', '#FFFF00', '#00FF00', 
+                '#00FFFF', '#0000FF', '#FF00FF', '#FFFFFF'
+            ];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            
+            // 創建爆炸粒子 - 增加數量和大小
+            const particleCount = 150 + Math.random() * 100;
+            for (let i = 0; i < particleCount; i++) {
+                fireworks.particles.push({
+                    x: x,
+                    y: y,
+                    color: color,
+                    radius: Math.random() * 4 + 2,
+                    speed: Math.random() * 8 + 4,
+                    angle: Math.random() * Math.PI * 2,
+                    friction: 0.93,
+                    gravity: 0.15,
+                    opacity: 1,
+                    decay: Math.random() * 0.015 + 0.003,
+                    spark: Math.random() > 0.7 // 是否為火花
+                });
+            }
+            
+            // 隨機間隔後創建下一個煙花
+            setTimeout(() => {
+                if (fireworks.isActive) {
+                    createFirework();
+                }
+            }, Math.random() * 300 + 50);
+        }
+
+        // 動畫煙花效果
+        function animateFireworks() {
+            if (!fireworks.isActive || !fireworks.canvas || !fireworks.ctx) return;
+            
+            // 清空Canvas
+            fireworks.ctx.clearRect(0, 0, fireworks.canvas.width, fireworks.canvas.height);
+            
+            // 更新和繪製每個粒子
+            for (let i = fireworks.particles.length - 1; i >= 0; i--) {
+                const p = fireworks.particles[i];
+                
+                // 更新位置
+                p.x += Math.cos(p.angle) * p.speed;
+                p.y += Math.sin(p.angle) * p.speed + p.gravity;
+                
+                // 應用摩擦力和重力
+                p.speed *= p.friction;
+                p.gravity += 0.01;
+                
+                // 減少不透明度
+                p.opacity -= p.decay;
+                
+                // 繪製粒子
+                fireworks.ctx.beginPath();
+                fireworks.ctx.globalAlpha = p.opacity;
+                fireworks.ctx.fillStyle = p.color;
+                
+                if (p.spark) {
+                    // 繪製火花（線條）
+                    fireworks.ctx.fillRect(p.x, p.y, p.radius * 2, p.radius * 0.5);
+                } else {
+                    // 繪製圓形粒子
+                    fireworks.ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    fireworks.ctx.fill();
+                }
+                
+                // 如果粒子完全透明，移除它
+                if (p.opacity <= 0) {
+                    fireworks.particles.splice(i, 1);
+                }
+            }
+            
+            // 繼續動畫循環
+            fireworks.animationId = requestAnimationFrame(animateFireworks);
+        }
+
         const pieces = 'ILJOTSZ';
         const colors = [
             null,
@@ -1434,6 +1725,9 @@
         }
 
         function getDisplayLevel() {
+            if (isInfiniteMode) {
+                return "MAX";
+            }
             const offset = calculateLevelOffset(gameMode);
             return offset + (level - 1);
         }
@@ -1541,7 +1835,7 @@
 
         function getRandomPieceType() {
             if (piecesCount >= nextSpecialPiece) {
-                nextSpecialPiece += 100; // 修改：從50改為100
+                nextSpecialPiece += 100;
                 return specialGenerator.nextPiece();
             }
             
@@ -1570,7 +1864,7 @@
         }
 
         // ====================================================
-        // 改進的AI算法（基於原始遊戲的AI）
+        // 改進的AI算法（提高準確性版本）
         // ====================================================
         class ProfessionalTetrisAI {
             constructor() {
@@ -1579,7 +1873,8 @@
                     heightWeight: 0.510066,
                     linesWeight: 0.760666,
                     holesWeight: 0.35663,
-                    bumpinessWeight: 0.184483
+                    bumpinessWeight: 0.184483,
+                    wellWeight: 0.10  // 新增：井深懲罰
                 };
             }
             
@@ -1606,11 +1901,45 @@
                     }
                     pieceCopy.pos.x = move.x;
                     
+                    // 先將方塊移動到頂部
+                    pieceCopy.pos.y = 0;
+                    
+                    // 檢查位置是否有效
+                    if (this.checkCollision(simulatedGrid, pieceCopy)) {
+                        // 如果直接碰撞，嘗試向左或向右微調
+                        let adjusted = false;
+                        for (let offset = 1; offset <= 2; offset++) {
+                            // 嘗試向左
+                            pieceCopy.pos.x = move.x - offset;
+                            if (!this.checkCollision(simulatedGrid, pieceCopy)) {
+                                adjusted = true;
+                                break;
+                            }
+                            // 嘗試向右
+                            pieceCopy.pos.x = move.x + offset;
+                            if (!this.checkCollision(simulatedGrid, pieceCopy)) {
+                                adjusted = true;
+                                break;
+                            }
+                            // 重置位置
+                            pieceCopy.pos.x = move.x;
+                        }
+                        
+                        if (!adjusted) {
+                            continue; // 跳過這個無效的位置
+                        }
+                    }
+                    
                     // 下落到底部
                     while (!this.checkCollision(simulatedGrid, pieceCopy)) {
                         pieceCopy.pos.y++;
                     }
-                    pieceCopy.pos.y--;
+                    pieceCopy.pos.y--; // 回退到不碰撞的位置
+                    
+                    // 再次驗證位置是否有效
+                    if (pieceCopy.pos.y < 0 || this.checkCollision(simulatedGrid, pieceCopy)) {
+                        continue; // 跳過無效位置
+                    }
                     
                     // 放置方塊
                     this.placePiece(simulatedGrid, pieceCopy);
@@ -1620,6 +1949,13 @@
                     
                     // 評估當前局面
                     let score = this.evaluateBoard(simulatedGrid);
+                    
+                    // 考慮消除的行數獎勵
+                    score += linesCleared * 100;
+                    
+                    // 考慮放置高度懲罰（避免堆太高）
+                    const landingHeight = pieceCopy.pos.y;
+                    score -= landingHeight * 0.1;
                     
                     // 考慮下一個方塊（一層前瞻）
                     if (nextPiece) {
@@ -1631,39 +1967,40 @@
                         // 找到下一個方塊的最佳位置
                         const nextBestMove = this.findBestMoveForSinglePiece(simulatedGrid, nextPieceCopy);
                         
-                        // 模擬放置下一個方塊
-                        const nextSimulatedGrid = this.copyGrid(simulatedGrid);
-                        const nextPieceFinal = {
-                            matrix: nextPiece,
-                            pos: { x: nextBestMove.x, y: 0 }
-                        };
-                        
-                        // 應用旋轉
-                        for (let i = 0; i < nextBestMove.rotations; i++) {
-                            this.rotatePiece(nextPieceFinal);
+                        if (nextBestMove) {
+                            // 模擬放置下一個方塊
+                            const nextSimulatedGrid = this.copyGrid(simulatedGrid);
+                            const nextPieceFinal = {
+                                matrix: nextPiece,
+                                pos: { x: nextBestMove.x, y: 0 }
+                            };
+                            
+                            // 應用旋轉
+                            for (let i = 0; i < nextBestMove.rotations; i++) {
+                                this.rotatePiece(nextPieceFinal);
+                            }
+                            
+                            // 下落到底部
+                            nextPieceFinal.pos.y = 0;
+                            while (!this.checkCollision(nextSimulatedGrid, nextPieceFinal)) {
+                                nextPieceFinal.pos.y++;
+                            }
+                            nextPieceFinal.pos.y--;
+                            
+                            // 再次驗證
+                            if (nextPieceFinal.pos.y >= 0 && !this.checkCollision(nextSimulatedGrid, nextPieceFinal)) {
+                                // 放置方塊
+                                this.placePiece(nextSimulatedGrid, nextPieceFinal);
+                                
+                                // 清除完整行
+                                const nextLinesCleared = this.clearLines(nextSimulatedGrid);
+                                
+                                // 評估最終局面
+                                const finalScore = this.evaluateBoard(nextSimulatedGrid);
+                                score += finalScore * 0.3 + nextLinesCleared * 30;
+                            }
                         }
-                        
-                        // 下落到底部
-                        while (!this.checkCollision(nextSimulatedGrid, nextPieceFinal)) {
-                            nextPieceFinal.pos.y++;
-                        }
-                        nextPieceFinal.pos.y--;
-                        
-                        // 放置方塊
-                        this.placePiece(nextSimulatedGrid, nextPieceFinal);
-                        
-                        // 清除完整行
-                        this.clearLines(nextSimulatedGrid);
-                        
-                        // 評估最終局面
-                        const finalScore = this.evaluateBoard(nextSimulatedGrid);
-                        
-                        // 結合兩個分數（當前佔70%，下一個佔30%）
-                        score = score * 0.7 + finalScore * 0.3;
                     }
-                    
-                    // 考慮消除的行數獎勵
-                    score += linesCleared * 100;
                     
                     // 更新最佳移動
                     if (score > bestScore) {
@@ -1703,15 +2040,21 @@
                         const finalY = this.dropPiece(grid, testPiece);
                         testPiece.pos.y = finalY;
                         
+                        // 驗證最終位置
+                        if (finalY < 0 || this.checkCollision(grid, testPiece)) {
+                            continue;
+                        }
+                        
                         // 模擬放置
                         const simulatedGrid = this.copyGrid(grid);
                         this.placePiece(simulatedGrid, testPiece);
                         
                         // 清除完整行
-                        this.clearLines(simulatedGrid);
+                        const linesCleared = this.clearLines(simulatedGrid);
                         
                         // 評估局面
-                        const score = this.evaluateBoard(simulatedGrid);
+                        let score = this.evaluateBoard(simulatedGrid);
+                        score += linesCleared * 100;
                         
                         if (score > bestScore) {
                             bestScore = score;
@@ -1736,8 +2079,11 @@
                         this.rotatePiece(testPiece);
                     }
                     
-                    // 嘗試所有水平位置
-                    for (let x = -2; x < COLS + 2; x++) {
+                    // 計算方塊寬度
+                    const pieceWidth = testPiece.matrix[0].length;
+                    
+                    // 嘗試所有水平位置（考慮邊界）
+                    for (let x = -pieceWidth + 1; x < COLS; x++) {
                         testPiece.pos.x = x;
                         testPiece.pos.y = 0;
                         
@@ -1757,12 +2103,14 @@
                 const lines = this.calculateLines(grid);
                 const holes = this.calculateHoles(grid);
                 const bumpiness = this.calculateBumpiness(grid);
+                const wellDepth = this.calculateWellDepth(grid);
                 
-                // 使用原始遊戲的評估公式
+                // 使用改進的評估公式
                 return -this.weights.heightWeight * aggregateHeight +
                        this.weights.linesWeight * lines -
                        this.weights.holesWeight * holes -
-                       this.weights.bumpinessWeight * bumpiness;
+                       this.weights.bumpinessWeight * bumpiness -
+                       this.weights.wellWeight * wellDepth;
             }
             
             // 計算總高度
@@ -1839,6 +2187,24 @@
                 return bumpiness;
             }
             
+            // 計算井深（新增）
+            calculateWellDepth(grid) {
+                let totalWellDepth = 0;
+                
+                for (let col = 0; col < COLS; col++) {
+                    const leftHeight = col > 0 ? this.getColumnHeight(grid, col - 1) : Infinity;
+                    const rightHeight = col < COLS - 1 ? this.getColumnHeight(grid, col + 1) : Infinity;
+                    const currentHeight = this.getColumnHeight(grid, col);
+                    
+                    if (leftHeight > currentHeight && rightHeight > currentHeight) {
+                        const wellDepth = Math.min(leftHeight, rightHeight) - currentHeight;
+                        totalWellDepth += wellDepth * wellDepth; // 平方懲罰深井
+                    }
+                }
+                
+                return totalWellDepth;
+            }
+            
             // 清除完整行
             clearLines(grid) {
                 let linesCleared = 0;
@@ -1875,16 +2241,15 @@
                 return y - 1;
             }
             
-            // 檢查碰撞
+            // 檢查碰撞（使用與遊戲相同的邏輯）
             checkCollision(grid, piece) {
-                const matrix = piece.matrix;
-                const pos = piece.pos;
-                
-                for (let y = 0; y < matrix.length; y++) {
-                    for (let x = 0; x < matrix[y].length; x++) {
-                        if (matrix[y][x] !== 0) {
-                            const boardX = pos.x + x;
-                            const boardY = pos.y + y;
+                const m = piece.matrix;
+                const o = piece.pos;
+                for (let y = 0; y < m.length; y++) {
+                    for (let x = 0; x < m[y].length; x++) {
+                        if (m[y][x] !== 0) {
+                            const boardX = o.x + x;
+                            const boardY = o.y + y;
                             
                             // 檢查邊界
                             if (boardX < 0 || boardX >= COLS || boardY >= ROWS) {
@@ -1898,7 +2263,6 @@
                         }
                     }
                 }
-                
                 return false;
             }
             
@@ -1921,7 +2285,7 @@
                 }
             }
             
-            // 旋轉方塊
+            // 旋轉方塊（使用與遊戲相同的邏輯）
             rotatePiece(piece) {
                 const n = piece.matrix.length;
                 const rotated = new Array(n).fill().map(() => new Array(n).fill(0));
@@ -1953,17 +2317,26 @@
         const professionalAI = new ProfessionalTetrisAI();
 
         // ====================================================
-        // AI執行邏輯
+        // AI執行邏輯（改進版本）
         // ====================================================
         let aiMoveSteps = [];
         let currentAiStep = 0;
         let aiMoveTimer = null;
         let aiDropTimer = null;
         let aiDropSpeed = 50;
+        let aiLastMoveTime = 0;
+        let aiMinMoveDelay = 30; // AI移動的最小延遲，防止過快
 
         // 執行AI移動
         function executeAiMove() {
             if (!player.matrix || isPaused || !isAutoPlay) return;
+            
+            const now = performance.now();
+            if (now - aiLastMoveTime < aiMinMoveDelay) {
+                // 防止過快執行
+                setTimeout(executeAiMove, aiMinMoveDelay - (now - aiLastMoveTime));
+                return;
+            }
             
             if (aiMoveSteps.length === 0) {
                 // 計算最佳移動
@@ -1992,6 +2365,9 @@
                         aiMoveSteps.push({ type: 'move', direction: moveDirection });
                     }
                     
+                    // 添加一個最終微調步驟，確保位置正確
+                    aiMoveSteps.push({ type: 'verify', x: targetX });
+                    
                     currentAiStep = 0;
                     
                     // 開始執行移動步驟
@@ -2016,15 +2392,26 @@
                 case 'move':
                     playerMove(step.direction);
                     break;
+                case 'verify':
+                    // 驗證位置，必要時進行微調
+                    const targetX = step.x;
+                    const currentX = player.pos.x;
+                    if (Math.abs(targetX - currentX) > 0) {
+                        // 進行微調
+                        const adjustDirection = Math.sign(targetX - currentX);
+                        playerMove(adjustDirection);
+                    }
+                    break;
             }
             
             currentAiStep++;
+            aiLastMoveTime = performance.now();
             
             clearTimeout(aiMoveTimer);
-            aiMoveTimer = setTimeout(executeNextAiStep, 30);
+            aiMoveTimer = setTimeout(executeNextAiStep, aiMinMoveDelay);
         }
 
-        // AI自動下落
+        // AI自動下落（改進版本）
         function startAiDrop() {
             if (aiDropTimer) {
                 clearInterval(aiDropTimer);
@@ -2037,15 +2424,16 @@
                     return;
                 }
                 
-                player.pos.y++;
-                if (collide(arena, player)) {
-                    player.pos.y--;
+                // 檢查是否需要硬落
+                const ghostPos = getGhostPosition();
+                const distanceToBottom = ghostPos.y - player.pos.y;
+                
+                if (distanceToBottom <= 3) {
+                    // 接近底部，執行硬落
+                    playerHardDrop();
+                    
                     clearInterval(aiDropTimer);
                     aiDropTimer = null;
-                    
-                    merge(arena, player);
-                    playerReset();
-                    arenaSweep();
                     
                     // 重置移動步驟，準備下一個決策
                     aiMoveSteps = [];
@@ -2053,6 +2441,25 @@
                     
                     // 快速開始下一個決策
                     setTimeout(executeAiMove, 50);
+                } else {
+                    // 正常下落
+                    player.pos.y++;
+                    if (collide(arena, player)) {
+                        player.pos.y--;
+                        clearInterval(aiDropTimer);
+                        aiDropTimer = null;
+                        
+                        merge(arena, player);
+                        playerReset();
+                        arenaSweep();
+                        
+                        // 重置移動步驟，準備下一個決策
+                        aiMoveSteps = [];
+                        currentAiStep = 0;
+                        
+                        // 快速開始下一個決策
+                        setTimeout(executeAiMove, 50);
+                    }
                 }
             }, aiDropSpeed);
         }
@@ -2069,13 +2476,14 @@
             isSoftDropping = false;
             isSpecialPiecePaused = false;
             isSecondaryPanelActive = false;
+            isInfiniteMode = false; // 重置無限模式標誌
             
             // 重置分數和統計數據
             player.score = 0;
             totalLinesCleared = 0;
             level = 1;
             piecesCount = 0;
-            nextSpecialPiece = 100; // 修改：從50改為100
+            nextSpecialPiece = 100;
             dropCounter = 0;
             lastTime = 0;
             
@@ -2158,6 +2566,43 @@
             
             // 停止完成音效
             soundManager.stopCompletionSound();
+        }
+
+        // ====================================================
+        // 新增：無限模式繼續遊玩
+        // ====================================================
+        function continueInfiniteMode() {
+            // 停止通關特效
+            stopCompletionEffects();
+            
+            // 設置無限模式標誌
+            isInfiniteMode = true;
+            isGameCompleted = false;
+            
+            // 設置固定速度為20ms（最快速度）
+            dropInterval = 20;
+            
+            // 更新顯示
+            updateSpeedDisplay();
+            document.getElementById('level').innerText = "MAX";
+            document.getElementById('mode').innerText = "無限";
+            
+            // 隱藏通關畫面
+            document.getElementById('completion-overlay').style.display = 'none';
+            
+            // 繼續遊戲
+            isPaused = false;
+            pauseText.style.display = 'none';
+            lastTime = performance.now();
+            
+            // 恢復AI託管（如果之前是AI模式）
+            if (isAutoPlay) {
+                aiIndicator.classList.add('active');
+                startAutoPlay();
+            }
+            
+            // 繼續遊戲循環
+            update();
         }
 
         // ====================================================
@@ -2372,20 +2817,36 @@
                 ctx.fillRect(x, y, 1, 1);
                 ctx.globalAlpha = 1.0;
             } else {
+                // 绘制基本方块
                 ctx.fillStyle = color;
                 ctx.fillRect(x, y, 1, 1);
                 
+                // 增强的立体效果 - 更柔和的光影
+                // 顶部和左侧高光 - 更柔和的效果
                 ctx.fillStyle = 'rgba(255,255,255,0.3)';
-                ctx.fillRect(x, y, 0.8, 0.2);
-                ctx.fillRect(x, y, 0.2, 0.8);
+                ctx.fillRect(x, y, 1, 0.15);  // 顶部高光
+                ctx.fillRect(x, y, 0.15, 1);  // 左侧高光
                 
-                ctx.fillStyle = 'rgba(0,0,0,0.3)';
-                ctx.fillRect(x + 0.2, y + 0.8, 0.8, 0.2);
-                ctx.fillRect(x + 0.8, y + 0.2, 0.2, 0.8);
+                // 底部和右侧阴影 - 更柔和的颜色
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                ctx.fillRect(x, y + 0.85, 1, 0.15);  // 底部阴影
+                ctx.fillRect(x + 0.85, y, 0.15, 1);  // 右侧阴影
                 
-                ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-                ctx.lineWidth = 0.05;
-                ctx.strokeRect(x, y, 1, 1);
+                // 深度阴影效果 - 更柔和的颜色
+                ctx.fillStyle = 'rgba(0,0,0,0.15)';
+                ctx.fillRect(x + 0.15, y + 0.85, 0.85, 0.15);  // 底部深度阴影
+                ctx.fillRect(x + 0.85, y + 0.15, 0.15, 0.85);  // 右侧深度阴影
+                
+                // 边缘高光 - 更柔和
+                ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                ctx.fillRect(x, y, 0.05, 1);  // 左侧边缘高光
+                ctx.fillRect(x, y, 1, 0.05);  // 顶部边缘高光
+                
+                // 角落高光 - 更柔和
+                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                ctx.fillRect(x, y, 0.1, 0.1);  // 左上角高光
+                
+
             }
         }
 
@@ -2594,7 +3055,10 @@
                         totalLinesCleared += linesCleared;
                         document.getElementById('lines').innerText = totalLinesCleared;
                         
-                        updateLevelAndSpeed();
+                        // 在無限模式下不更新等級和速度
+                        if (!isInfiniteMode) {
+                            updateLevelAndSpeed();
+                        }
                     }
                     
                     updateScore();
@@ -2607,6 +3071,9 @@
         }
 
         function updateLevelAndSpeed() {
+            // 在無限模式下不更新等級和速度
+            if (isInfiniteMode) return;
+            
             const newLevel = Math.floor(totalLinesCleared / 5) + 1;
             
             if (newLevel > level) {
@@ -2647,6 +3114,9 @@
         }
 
         function increaseLevel() {
+            // 在無限模式下不增加等級
+            if (isInfiniteMode) return;
+            
             level++;
             dropInterval = Math.max(20, dropInterval - levelSpeedIncrease);
             updateSpeedDisplay();
@@ -2661,6 +3131,9 @@
         }
 
         function decreaseLevel() {
+            // 在無限模式下不減少等級
+            if (isInfiniteMode) return;
+            
             if (level > 1) {
                 level--;
                 dropInterval = dropInterval + levelSpeedIncrease;
@@ -2779,95 +3252,20 @@
         function startCompletionEffects() {
             soundManager.startCompletionSound();
             
-            fireworkInterval = setInterval(createFirework, 200);
-            
-            confettiInterval = setInterval(createConfetti, 100);
+            // 初始化煙花效果
+            initFireworks();
+            // 開始煙花效果
+            startFireworks();
         }
 
         function stopCompletionEffects() {
             soundManager.stopCompletionSound();
             
-            if (fireworkInterval) {
-                clearInterval(fireworkInterval);
-                fireworkInterval = null;
-            }
-            
-            if (confettiInterval) {
-                clearInterval(confettiInterval);
-                confettiInterval = null;
-            }
+            // 停止煙花效果
+            stopFireworks();
         }
 
-        function createFirework() {
-            const container = document.getElementById('completion-overlay');
-            
-            for (let i = 0; i < 3; i++) {
-                const firework = document.createElement('div');
-                firework.className = 'firework';
-                
-                const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffffff'];
-                const color = colors[Math.floor(Math.random() * colors.length)];
-                firework.style.backgroundColor = color;
-                firework.style.boxShadow = `0 0 10px ${color}`;
-                
-                const startX = Math.random() * 80 + 10;
-                const startY = 100;
-                firework.style.left = `${startX}%`;
-                firework.style.top = `${startY}%`;
-                
-                const targetX = (Math.random() - 0.5) * 150;
-                const targetY = -Math.random() * 100 - 10;
-                
-                firework.style.setProperty('--tx', `${targetX}px`);
-                firework.style.setProperty('--ty', `${targetY}px`);
-                
-                container.appendChild(firework);
-                
-                setTimeout(() => {
-                    if (firework.parentNode) {
-                        firework.parentNode.removeChild(firework);
-                    }
-                }, 1500);
-            }
-        }
 
-        function createConfetti() {
-            const container = document.getElementById('completion-overlay');
-            
-            for (let i = 0; i < 5; i++) {
-                const confetti = document.createElement('div');
-                confetti.className = 'confetti';
-                
-                const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffffff'];
-                const color = colors[Math.floor(Math.random() * colors.length)];
-                confetti.style.backgroundColor = color;
-                
-                const shapes = ['square', 'circle', 'triangle'];
-                const shape = shapes[Math.floor(Math.random() * shapes.length)];
-                
-                if (shape === 'circle') {
-                    confetti.style.borderRadius = '50%';
-                } else if (shape === 'triangle') {
-                    confetti.style.width = '0';
-                    confetti.style.height = '0';
-                    confetti.style.backgroundColor = 'transparent';
-                    confetti.style.borderLeft = '8px solid transparent';
-                    confetti.style.borderRight = '8px solid transparent';
-                    confetti.style.borderBottom = `15px solid ${color}`;
-                }
-                
-                const startX = Math.random() * 100;
-                confetti.style.left = `${startX}%`;
-                
-                container.appendChild(confetti);
-                
-                setTimeout(() => {
-                    if (confetti.parentNode) {
-                        confetti.parentNode.removeChild(confetti);
-                    }
-                }, 5000);
-            }
-        }
 
         function backToMenu() {
             document.getElementById('game-over-overlay').style.display = 'none';
